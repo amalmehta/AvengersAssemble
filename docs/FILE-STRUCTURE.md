@@ -21,12 +21,14 @@ SuiteOfAgents/
 │   │   ├── similarity.py        TF-IDF similarity between task texts
 │   │   ├── providers.py         Claude API provider and the offline mock
 │   │   ├── tools.py             Workspace file tools and sandboxed Python
+│   │   ├── inputs.py            Prepares uploads: images, PDFs, Office files (sandboxed)
 │   │   ├── store.py             SQLite runs and tasks (the reward log)
 │   │   ├── config.py            Settings, task kinds, model variants, prices, data folder
 │   │   └── agents/              Default agent roster (one YAML per agent) and its loader
 │   └── tests/
 │       ├── test_suite.py        Bandits, tools, sandbox, orchestration, CLI, cancel
 │       ├── test_text_routing.py         Similarity, contextual bandits, routing evidence
+│       ├── test_inputs.py               Uploads: every format, page ranges, sandboxes
 │       └── test_anthropic_provider.py   Real provider against a fake HTTP transport
 └── app/                         SwiftUI Mac app (Swift package)
     ├── Package.swift

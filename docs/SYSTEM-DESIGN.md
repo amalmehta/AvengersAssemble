@@ -50,14 +50,15 @@ flowchart LR
 | Bandits | `engine/src/suite/bandit.py` | Thompson sampling with Beta posteriors. The routing bandit has one arm per (kind, agent). Each agent has a variant bandit with one arm per (agent, model variant). Both are contextual: past results count toward a new task in proportion to how alike the wording is. |
 | Similarity | `engine/src/suite/similarity.py` | TF-IDF vectors over task titles and descriptions, and their cosine similarity. Pure Python, computed locally. |
 | Agents | `engine/src/suite/agents/*.yaml` → `<data>/agents/` | Name, role, skills (task kinds, primary skill first), allowed variants, and system prompt. Ten routable specialists plus the non-routable Reviewer. Edit them or add a file to add an agent. |
-| Tools | `engine/src/suite/tools.py` | `write_file`, `read_file`, `list_files` confined to the run's workspace, and `run_python` under macOS `sandbox-exec`. Web search is Anthropic's server-side tool. |
+| Tools | `engine/src/suite/tools.py` | `write_file`, `read_file`, `list_files` confined to the run's workspace, and `run_python` under macOS `sandbox-exec`. `read_file` on an upload returns images and PDFs as native image and document blocks, and Office files as text. Web search is Anthropic's server-side tool. |
+| Inputs | `engine/src/suite/inputs.py` | Prepares uploads once per run, sandboxed: HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px; PDF page counts and text; DOCX/XLSX/PPTX → Markdown. Writes the CEO's planning digest. |
 | Providers | `engine/src/suite/providers.py` | `AnthropicProvider` (Messages API with tools, structured outputs, effort and refusal fallbacks) and `MockProvider` (deterministic offline stand-in with the same interface). |
 | Store | `engine/src/suite/store.py` | SQLite: `runs` and `tasks`. A task row holds its routing choice, judge score, your rating and cost, so it is also the reward log. |
 
 ## Main flows
 
 **A run.** `suite run "<goal>" [--input file…]`
-1. Uploaded files are copied to `runs/<id>/workspace/inputs/`.
+1. Uploaded files are copied to `runs/<id>/workspace/inputs/` and **prepared** (see "Uploads" below). The CEO gets a digest of them: name, type, size, pages or dimensions, and an excerpt.
 2. **Plan.** The CEO (Opus 5.5, structured JSON output) returns 4–10 tasks, each with a kind (one of 10) and dependencies.
 3. Every task whose dependencies have all finished is ready. Up to `max_parallel_tasks` (default 3) ready tasks run at once. For each one:
    - On the main thread, one task at a time, the **routing bandit** draws a sample for each routable agent from its Beta posterior for this task (its kind and its wording) and picks the highest.
@@ -71,6 +72,20 @@ flowchart LR
 Every step emits a JSON-line event. The app renders them live, and they are also appended to `runs/<id>/events.jsonl`. With parallel tasks, events from different tasks interleave; each carries its `task_id`.
 
 **Parallel execution.** Routing stays on the main thread, so bandit decisions are serialized. Tasks dispatched together don't see each other's rewards (batched Thompson sampling). In the mock simulation this didn't change where learning ends up: after 60 runs, 50% of tasks reached the best agent one at a time against 49% three at a time (mean of 4 simulations each). One lock guards spend, the counters, the event stream and the SQLite connection. Provider calls run outside the lock, so they overlap. If a worker hits an error or the budget, the scheduler stops dispatching, waits for tasks in flight to finish, then ends the run. On cancel, workers stop at their next API call and record nothing more.
+
+**Uploads.** Agents read uploads on demand with `read_file`, so you pay for a file only when an agent opens it:
+
+| Upload | Prepared as (once, at run start) | What `read_file` returns |
+|---|---|---|
+| PNG, JPEG, GIF, WebP | Downscaled to 1568 px on the long edge and under 3.7 MB (WebP that needs resizing becomes JPEG) | The image, as an image block the model sees |
+| HEIC/HEIF (iPhone photos) | Converted to JPEG, same size limits | The image |
+| TIFF, BMP | Converted to PNG | The image |
+| PDF | Page count and extracted text | ≤ 20 pages: the real PDF as a document block (text, tables and figures). Longer: the extracted text of 20 pages and how to page through; `pages: "12-18"` returns up to 20 pages as a real PDF |
+| DOCX, XLSX, PPTX | Markdown: headings, paragraphs and tables; sheets as tables (first 200 rows); slides with speaker notes | The Markdown text |
+| Text and code | Nothing | The text |
+| Anything else | Nothing | A note that it's binary; `run_python` can inspect it (pypdf, python-docx, openpyxl and python-pptx are importable) |
+
+Prepared copies live in `inputs/.prepared/`, hidden from `list_files`; the original stays as uploaded. A file that can't be parsed is reported in the digest and as a `read_file` error; the run continues.
 
 **Rating.** `suite rate <task> up|down|clear` stores `user_rating` (1/0/null). Posteriors are rebuilt from the task table on every routing decision, so a rating takes effect on the next task, even mid-run.
 
@@ -114,6 +129,7 @@ Task: `{id, run_id, seq, round, title, description, kind, depends_on, status, ag
 | Event | Fields |
 |---|---|
 | `run_started` | run_id, goal, mock, max_cost_usd, max_tasks |
+| `inputs` | files: [{name, kind (`pdf`/`image`/`office`/`text`/`binary`/`unreadable`), bytes, pages, width, height, error}] (only when files were uploaded) |
 | `plan` | round, tasks |
 | `task_assigned` | task_id, kind, agent, variant, samples (the Thompson draw for each agent), similar (up to 3 past tasks: task_id, title, kind, agent, variant, reward, similarity) |
 | `tool_call` / `agent_text` | task_id, tool + summary / text |
@@ -132,7 +148,7 @@ All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Suite 
 | `settings.json` | `mock`, `max_cost_usd` (2), `max_tasks` (40), `user_rating_weight` (3), `cost_penalty_per_usd` (0.2), `max_agent_steps` (10), `max_parallel_tasks` (3), `text_weight` (0.5) | App Settings |
 | `agents/*.yaml` | The editable roster, seeded from the defaults on first use | You |
 | `suite.db` | Runs and tasks (the reward log) | Engine |
-| `runs/<id>/workspace/` | `inputs/` (your uploads) and `tasks/` (deliverables), plus any code or data the agents made | Agents |
+| `runs/<id>/workspace/` | `inputs/` (your uploads, with model-ready copies in `inputs/.prepared/`) and `tasks/` (deliverables), plus any code or data the agents made | Agents |
 | `runs/<id>/report.md`, `events.jsonl` | The final report and the full event log | Engine |
 | `feedback.jsonl` | Feedback-tab entries (local only) | App |
 | `venv/` | The engine's Python environment when launched from the app | uv |
@@ -148,7 +164,8 @@ The API key lives only in the macOS Keychain (service "Suite of Agents"). It is 
 - **Local TF-IDF over embeddings.** It is free, offline, deterministic and works with the mock. The cost: it matches shared words, not paraphrase ("BOM" and "bill of materials" don't match). Posteriors are recomputed per decision in O(number of past tasks), fine for thousands of tasks.
 - **LLM judge + weighted human rating.** The judge makes learning automatic. Your rating outranks it 3:1 because the judge can share the agents' blind spots.
 - **Parallel tasks on threads, routing on one thread.** Agent work is almost entirely waiting on the API, so threads give real overlap without the cost of extra processes. Keeping routing serialized keeps bandit decisions simple and lets tests reason about them. The trade-offs: batched decisions use slightly staler posteriors, and the budget check happens before each call, so with N tasks in flight a run can overshoot its cap by up to N calls. Set "Tasks at once" to 1 for exact sequential behaviour.
-- **Safety.** No send, buy or publish tools. Code runs in a `sandbox-exec` profile that denies network access and writes outside the workspace. Every run has a dollar cap and a task cap. Opus and Sonnet requests use `fallbacks: "default"`, so a safety-classifier decline is retried on Anthropic's recommended fallback model instead of failing the task.
+- **Uploads read natively, on demand, rather than converted to text up front.** Claude reads a PDF's tables and figures and sees an image as it is, which no text conversion keeps; and a file costs tokens only when an agent opens it. The trade-off: an opened file stays in that agent's conversation, so it's re-sent on each later step of the task (a 20-page PDF is tens of thousands of tokens per step). The 20-page cap bounds one read, and downscaling at ingestion keeps images small, sized before any request carries them, never edited afterwards.
+- **Safety.** No send, buy or publish tools. Code runs in a `sandbox-exec` profile that denies network access and writes outside the workspace. Uploads are untrusted, so parsing them is sandboxed too: PDFs and Office files are parsed in a child process under that same profile, with a 90 s limit. Images are decoded only by Apple's `sips`, under a profile that also allows the per-user temp folder `sips` needs (still no network, and nothing in your home folder). Every run has a dollar cap and a task cap. Opus and Sonnet requests use `fallbacks: "default"`, so a safety-classifier decline is retried on Anthropic's recommended fallback model instead of failing the task.
 - **Offline mock as a first-class provider.** The whole system (app included) runs, demos and tests with no key and no cost. The mock judge rewards specialists and stronger models, with noise, so bandit learning is observable.
 
 ## Testing
@@ -156,12 +173,13 @@ The API key lives only in the macOS Keychain (service "Suite of Agents"). It is 
 `cd engine && uv run pytest`:
 - **Bandits.** The skill prior favours specialists. Learning overrides a wrong prior. Your rating replaces and outweighs the judge. The variant bandit pays for cost.
 - **Tools.** Path escapes are rejected. The sandbox blocks network access and writes outside the workspace.
+- **Uploads.** Each format end to end: short PDFs come back native and long ones as text with working page ranges (checked by reading the sliced PDF); bad ranges are rejected. Large images are downscaled; HEIC becomes JPEG and TIFF becomes PNG, with originals untouched. DOCX/XLSX/PPTX become Markdown with tables and notes. Broken and binary files fail gracefully, and prepared copies stay hidden. Both conversion sandboxes block network and writes outside their allowed folders. A mock run gives every agent the PDF as a native document. Through the fake transport, the plan prompt carries the digest and the upload reaches the API as a `document` block inside `tool_result`.
 - **Orchestration (mock).** A full run covers the event sequence, both rounds, inputs copied, the report and the event log. The budget cap and task cap each stop a run cleanly with a report. Learning across runs is checked too.
 - **Real provider via fake HTTP transport.** The exact request shape is checked: model IDs, effort, `fallbacks: "default"` with its beta header, tool list, the web-search tool version per model, structured outputs and cost arithmetic. A whole run is driven against scripted API replies, including the tool loop echoing assistant blocks unchanged.
 - **Parallel execution.** Overlap reaches the limit and dependencies are respected (no task starts before its dependencies finish). Parallel runs are faster than sequential ones, and a limit of 1 never overlaps. The task cap counts dispatched tasks. The budget cap and worker errors drain tasks in flight with none left `running`. Concurrent `run_python` calls don't collide.
 - **Text routing.** Tokenizing and cosine. `text_weight` 0 is exactly kind-only. Similar wording carries evidence across kinds, and none transfers without shared words. Wording splits one kind between two agents where kind-only can't. The variant bandit learns per wording (Opus for proofs, Haiku for summaries). The closest past tasks are listed in order. Old databases gain the `routing` column. Runs store their routing evidence and `show` returns it.
 - **CLI.** Every `--json` command, plus SIGTERM → `canceled` (with parallel tasks in flight).
-- **App.** `cd app && swift test` covers event and routing-evidence decoding, settings, and the colour palette (families share a hue range; siblings are distinguishable). With `SUITE_ENGINE_DIR` set, it also checks that real `show` output carries routing evidence.
+- **App.** `cd app && swift test` covers event and routing-evidence decoding, a streamed run with a pasted image (agents receive it as an image), settings, and the colour palette (families share a hue range; siblings are distinguishable). With `SUITE_ENGINE_DIR` set, it also checks that real `show` output carries routing evidence.
 
 ## Known limits
 
@@ -171,5 +189,8 @@ The API key lives only in the macOS Keychain (service "Suite of Agents"). It is 
 - Wording-aware routing pays off only after many runs, and its gain in simulation is moderate (43% → 50% best-agent routing). The mock's variant rewards don't depend on wording, so the variant side is covered by unit tests, not simulation.
 - `sandbox-exec` is deprecated by Apple (though still functional). It confines writes and network access, not CPU or memory beyond the 60 s timeout.
 - Costs are computed from list prices in `config.py` and must be updated when prices change. On a refusal fallback, all attempts are priced at the requested model's rates.
-- Uploaded files are copied into the workspace for agents to `read_file`. Binary files (PDFs, images) are not yet converted into model-readable content.
+- A PDF longer than 20 pages comes back as extracted text unless an agent asks for a page range; a scanned PDF has no text layer, so its pages must be opened by range to be read.
+- An opened PDF or image is re-sent on every later step of that agent's task, which adds cost on long tasks.
+- Image conversion needs macOS (`sips`). Spreadsheets show their first 200 rows per sheet as text; formulas appear as their last saved values.
+- Preparing uploads takes about 1–2 s per file, longer for very large photos (a 20 MB HEIC took about 10 s).
 - The app needs `uv` installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`).

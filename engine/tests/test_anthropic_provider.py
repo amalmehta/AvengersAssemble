@@ -97,3 +97,46 @@ def test_full_run_through_fake_api(tmp_path, monkeypatch):
     assert task["judge_score"] == 0.9 and task["summary"] == "Margin is 42%."
     assert task["output_path"] == "workspace/tasks/01-model-unit-economics.md"
     assert (tmp_path / "runs" / run_id / "report.md").read_text().startswith("# Report")
+
+
+def test_uploads_reach_the_api_as_native_blocks(tmp_path, monkeypatch):
+    """The plan prompt carries the input digest; read_file on an upload returns a document block in tool_result."""
+    import sys as _sys
+    _sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
+    from test_inputs import make_pdf
+
+    monkeypatch.setenv("SUITE_HOME", str(tmp_path))
+    brief = tmp_path / "brief.pdf"
+    make_pdf(brief, ["Laundry robot market brief"])
+    sent = []
+
+    def responder(body):
+        fmt = (body.get("output_config") or {}).get("format")
+        last = body["messages"][-1]
+        if fmt and "tasks" in fmt["schema"]["properties"] and "done" not in fmt["schema"]["properties"]:
+            plan = {"tasks": [{"title": "Size the market", "description": "Use the brief.", "kind": "research",
+                               "depends_on": []}]}
+            return message([{"type": "text", "text": json.dumps(plan)}])
+        if fmt and "done" in fmt["schema"]["properties"]:
+            return message([{"type": "text", "text": json.dumps({"done": True, "reason": "ok", "tasks": []})}])
+        if fmt:
+            return message([{"type": "text", "text": json.dumps({"score": 0.8, "rationale": "ok"})}])
+        if body.get("tools"):
+            if isinstance(last["content"], str):
+                return message([{"type": "tool_use", "id": "toolu_1", "name": "read_file",
+                                 "input": {"path": "inputs/brief.pdf"}}], stop="tool_use")
+            return message([{"type": "text", "text": "Read the brief."}])
+        return message([{"type": "text", "text": "# Report"}])
+
+    p = provider_with(responder, sent)
+    Orchestrator(p, lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1}, suite_home=tmp_path,
+                 rng=random.Random(0)).run("Sell robots", [brief])
+    plan_prompt = sent[0]["body"]["messages"][0]["content"]
+    assert "inputs/brief.pdf (PDF, 1 page" in plan_prompt and "Laundry robot market brief" in plan_prompt
+    result = next(m for r in sent for m in r["body"]["messages"]
+                  if m["role"] == "user" and isinstance(m["content"], list)
+                  and m["content"][0].get("type") == "tool_result")["content"][0]
+    blocks = result["content"]
+    assert blocks[0] == {"type": "text", "text": "inputs/brief.pdf (PDF, 1 page)"}
+    assert blocks[1]["type"] == "document" and blocks[1]["source"]["media_type"] == "application/pdf"
+    assert result["is_error"] is False

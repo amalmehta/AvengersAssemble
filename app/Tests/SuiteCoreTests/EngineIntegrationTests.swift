@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import XCTest
 @testable import SuiteCore
@@ -56,6 +57,38 @@ final class EngineIntegrationTests: XCTestCase {
         XCTAssertEqual(up.rating, 1)
         let cleared = try await r.runJSON(["rate", task.id, "clear", "--json"], as: RateResponse.self)
         XCTAssertNil(cleared.rating)
+    }
+
+    func testStreamingRunWithUploadedImage() async throws {
+        let (r, home) = try runner()
+        defer { try? FileManager.default.removeItem(at: home) }
+        // A pasted image, written the way the app writes one (PNG in a temp folder).
+        let rep = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 64, pixelsHigh: 48, bitsPerSample: 8,
+                                                 samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                                 colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        let png = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+        let image = FileManager.default.temporaryDirectory.appendingPathComponent("Pasted Image \(UUID().uuidString).png")
+        try png.write(to: image)
+        defer { try? FileManager.default.removeItem(at: image) }
+
+        final class Box: @unchecked Sendable { var events: [RunEvent] = [] }
+        let box = Box()
+        let lock = NSLock()
+        let done = expectation(description: "run exits")
+        _ = try r.startStreaming(["run", "Sell socks online", "--mock", "--input", image.path, "--json"], onEvent: { e in
+            lock.lock(); box.events.append(e); lock.unlock()
+        }, onExit: { status, stderr in
+            XCTAssertEqual(status, 0, stderr)
+            done.fulfill()
+        })
+        await fulfillment(of: [done], timeout: 240)
+        XCTAssertTrue(box.events.contains(.unknown(type: "inputs")), "the engine reports prepared uploads")
+        let summaries = box.events.compactMap { e -> String? in
+            if case let .taskFinished(_, _, summary, _, _) = e { return summary }
+            return nil
+        }
+        XCTAssertFalse(summaries.isEmpty)
+        XCTAssertTrue(summaries.allSatisfy { $0.contains("Read image") }, "agents received the upload as an image")
     }
 
     func testCancelSendsSIGTERM() async throws {

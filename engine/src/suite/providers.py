@@ -190,9 +190,20 @@ class MockProvider(Provider):
         meta = meta or {}
         handler = getattr(self, f"_{purpose}")
         content, stop = handler(messages, meta)
-        prompt_chars = len(system) + len(json.dumps(messages))
+        media = [0]
+
+        def strip_media(obj):  # count images and documents as a flat token cost, not by base64 length
+            if isinstance(obj, dict):
+                if obj.get("type") in ("image", "document") and isinstance(obj.get("source"), dict):
+                    media[0] += 1
+                    return {"type": obj["type"]}
+                return {k: strip_media(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [strip_media(v) for v in obj]
+            return obj
+        prompt_chars = len(system) + len(json.dumps(strip_media(messages)))
         out_chars = len(json.dumps(content))
-        return Reply(content, stop, Usage(prompt_chars // 4, out_chars // 4, 0))
+        return Reply(content, stop, Usage(prompt_chars // 4 + 1500 * media[0], out_chars // 4, 0))
 
     @staticmethod
     def _text(s: str) -> tuple[list[dict], str]:
@@ -224,6 +235,16 @@ class MockProvider(Provider):
         kind, title, slug = meta.get("kind", "strategy"), meta.get("title", "Task"), meta.get("slug", "task")
         turns = sum(1 for m in messages if m["role"] == "assistant")
         numeric = kind in ("math", "physics", "software", "ai", "robotics")
+        # Open an upload (a PDF or image if there is one) before doing anything else.
+        listed = re.findall(r"^(inputs/.+?)\s*$", messages[0]["content"], re.M) if messages else []
+        listed.sort(key=lambda f: not re.search(r"\.(pdf|png|jpe?g|gif|webp|heic)$", f, re.I))
+        first_input = re.match(r"(.+)", listed[0]) if listed else None
+        seen = self._seen_inputs(messages)
+        if turns == 0 and first_input:
+            return [{"type": "text", "text": "Reading the founder's upload first."},
+                    {"type": "tool_use", "id": f"toolu_mock_{self.rng.randrange(10**8)}", "name": "read_file",
+                     "input": {"path": first_input.group(1)}}], "tool_use"
+        turns -= 1 if first_input else 0
         if turns == 0 and numeric:
             code = "import math\nmass, g, h = 1.2, 9.81, 0.5\nprint(f'energy per lift: {mass*g*h:.2f} J')\n"
             return [{"type": "text", "text": "Checking the numbers first."},
@@ -245,7 +266,20 @@ class MockProvider(Provider):
                 """)
             return [{"type": "tool_use", "id": f"toolu_mock_{self.rng.randrange(10**8)}", "name": "write_file",
                      "input": {"path": f"tasks/{slug}.md", "content": body}}], "tool_use"
-        return self._text(f"Done: wrote tasks/{slug}.md covering {title.lower()} with three stated assumptions.")
+        note = f" Read {seen}." if seen else ""
+        return self._text(f"Done: wrote tasks/{slug}.md covering {title.lower()} with three stated assumptions.{note}")
+
+    @staticmethod
+    def _seen_inputs(messages) -> str:
+        """What the mock 'saw' in tool results: proof the upload reached the model as a native block."""
+        kinds = []
+        for m in messages:
+            for block in m["content"] if isinstance(m["content"], list) else []:
+                for part in block.get("content", []) if block.get("type") == "tool_result" and \
+                        isinstance(block.get("content"), list) else []:
+                    if part.get("type") in ("image", "document"):
+                        kinds.append(part["type"])
+        return " and ".join(sorted(set(kinds)))
 
     def _judge(self, messages, meta):
         kind, skills, variant = meta.get("kind"), meta.get("skills", []), meta.get("variant")

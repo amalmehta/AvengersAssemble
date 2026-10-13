@@ -1,0 +1,9 @@
+.claude/
+.DS_Store
+__pycache__/
+.pytest_cache/
+engine/.venv/
+app/.build/
+app/.swiftpm/
+build/
+.scratch-home/

@@ -4,7 +4,8 @@ import Foundation
 public enum RunEvent: Sendable, Equatable {
     case runStarted(runId: String, goal: String, mock: Bool, maxCostUsd: Double?, maxTasks: Int?)
     case plan(round: Int, tasks: [SuiteTask])
-    case taskAssigned(taskId: String, kind: String?, agent: String, variant: String, samples: [String: Double])
+    case taskAssigned(taskId: String, kind: String?, agent: String, variant: String, samples: [String: Double],
+                      similar: [SimilarTask])
     case toolCall(taskId: String, tool: String, summary: String)
     case agentText(taskId: String, text: String)
     case taskFinished(taskId: String, status: TaskStatus, summary: String?, outputPath: String?, costUsd: Double?)
@@ -54,7 +55,7 @@ public enum RunEventDecoder {
             }
             return .taskAssigned(taskId: str(o["task_id"]) ?? "", kind: str(o["kind"]),
                                  agent: str(o["agent"]) ?? "", variant: str(o["variant"]) ?? "",
-                                 samples: samples)
+                                 samples: samples, similar: SimilarTask.list(o["similar"]))
         case "tool_call":
             return .toolCall(taskId: str(o["task_id"]) ?? "", tool: str(o["tool"]) ?? "tool",
                              summary: str(o["summary"]) ?? "")

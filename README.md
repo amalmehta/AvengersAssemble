@@ -1,6 +1,6 @@
 # Suite of Agents
 
-**A company made of AI agents: a CEO, a researcher, a marketer, product, software, hardware, robotics, AI, math and physics. Multi-armed bandits learn which agent, on which model, should do each kind of work.**
+**A company made of AI agents: a CEO, a researcher, a marketer, product, software, hardware, robotics, AI, math and physics. Multi-armed bandits learn which agent, on which model, should do each task, from its kind and from what it says.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/run-dark.png">
@@ -12,7 +12,7 @@
 ```mermaid
 flowchart LR
     G([Your goal + files]) --> CEO[CEO plans tasks]
-    CEO --> R{Routing bandit<br/>which agent?}
+    CEO --> R{Routing bandit<br/>which agent?<br/>kind + wording}
     R --> V{Variant bandit<br/>which model?}
     V --> A[Agent works<br/>web search · files · sandboxed Python]
     A --> J[Reviewer scores 0–1]
@@ -36,7 +36,7 @@ flowchart LR
 <td width="50%">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/bandit-learning-dark.png">
-  <img alt="Share of tasks routed to the right specialist, rising over 60 offline runs" src="docs/images/bandit-learning-light.png">
+  <img alt="Share of tasks routed to the best agent over 60 offline runs: routing on task wording reaches 50%, kind-only routing 43%" src="docs/images/bandit-learning-light.png">
 </picture>
 </td>
 </tr>

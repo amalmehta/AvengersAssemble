@@ -40,6 +40,7 @@ final class RunState: Identifiable {
     var runFolder: URL?
     var activity: [String: [ActivityNote]] = [:]
     var samples: [String: [String: Double]] = [:]
+    var similar: [String: [SimilarTask]] = [:]
     var selectedTaskID: String?
     var loading = false
 
@@ -61,6 +62,11 @@ final class RunState: Identifiable {
         report = detail.run.report ?? report
         // Keep task-local live state (activity) but take the engine's view of every task.
         tasks = detail.tasks.sorted { $0.seq < $1.seq }
+        for t in tasks {  // routing evidence stored by the engine; live events already filled it in for this session
+            guard let r = t.routing else { continue }
+            if samples[t.id] == nil, !r.samples.isEmpty { samples[t.id] = r.samples }
+            if similar[t.id] == nil { similar[t.id] = r.similar }
+        }
         tasksDone = tasks.filter { $0.status == .done || $0.status == .failed }.count
         if let ws = detail.run.workspace, !ws.isEmpty {
             runFolder = URL(fileURLWithPath: ws).deletingLastPathComponent()
@@ -262,7 +268,7 @@ final class AppModel {
             }
             state.tasks.sort { $0.seq < $1.seq }
             if state.selectedTaskID == nil { state.selectedTaskID = state.tasks.first?.id }
-        case let .taskAssigned(taskId, kind, agent, variant, samples):
+        case let .taskAssigned(taskId, kind, agent, variant, samples, similar):
             if let i = state.index(of: taskId) {
                 state.tasks[i].agent = agent
                 state.tasks[i].variant = variant
@@ -270,6 +276,7 @@ final class AppModel {
                 if state.tasks[i].status == .pending { state.tasks[i].status = .running }
             }
             state.samples[taskId] = samples
+            state.similar[taskId] = similar
             note(state, taskId, "person.crop.circle.badge.checkmark", "Assigned to \(agentName(agent)) on \(Naming.variantName(variant))")
             state.selectedTaskID = taskId
         case let .toolCall(taskId, tool, summary):
@@ -467,6 +474,7 @@ final class AppModel {
         s.tasksDone = DemoData.tasks.count
         s.report = DemoData.report
         s.samples = DemoData.samples
+        s.similar = DemoData.similar
         s.createdAt = SuiteDates.parse("2026-10-13T16:42:00Z")
         s.selectedTaskID = "t_04"
         s.runFolder = URL(fileURLWithPath: "/tmp")

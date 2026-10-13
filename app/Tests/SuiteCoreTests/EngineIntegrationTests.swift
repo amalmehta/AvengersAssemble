@@ -48,6 +48,9 @@ final class EngineIntegrationTests: XCTestCase {
 
         let detail = try await r.runJSON(["show", runId, "--json"], as: RunDetail.self)
         XCTAssertFalse(detail.tasks.isEmpty)
+        let routed = detail.tasks.filter { $0.agent != nil }
+        XCTAssertFalse(routed.isEmpty)
+        XCTAssertTrue(routed.allSatisfy { !($0.routing?.samples.isEmpty ?? true) }, "every routed task stores its samples")
         let task = try XCTUnwrap(detail.tasks.first)
         let up = try await r.runJSON(["rate", task.id, "up", "--json"], as: RateResponse.self)
         XCTAssertEqual(up.rating, 1)

@@ -11,13 +11,14 @@ SuiteOfAgents/
 │   └── images/                  App screenshots (light/dark) and the bandit learning chart
 ├── scripts/
 │   ├── build-app.sh             Builds "build/Suite of Agents.app" with the engine bundled inside
-│   └── bandit_chart.py          Simulates offline runs and draws the learning chart
+│   └── bandit_chart.py          Simulates offline runs and draws the learning chart (wording vs kind-only routing)
 ├── engine/                      Python engine: the `suite` command
 │   ├── pyproject.toml, uv.lock
 │   ├── src/suite/
 │   │   ├── cli.py               Commands and --json output (the app's interface)
 │   │   ├── orchestrator.py      One run: plan → route → work → judge → review → report
-│   │   ├── bandit.py            Thompson-sampling routing and variant bandits
+│   │   ├── bandit.py            Thompson-sampling routing and variant bandits (kind + wording)
+│   │   ├── similarity.py        TF-IDF similarity between task texts
 │   │   ├── providers.py         Claude API provider and the offline mock
 │   │   ├── tools.py             Workspace file tools and sandboxed Python
 │   │   ├── store.py             SQLite runs and tasks (the reward log)
@@ -25,6 +26,7 @@ SuiteOfAgents/
 │   │   └── agents/              Default agent roster (one YAML per agent) and its loader
 │   └── tests/
 │       ├── test_suite.py        Bandits, tools, sandbox, orchestration, CLI, cancel
+│       ├── test_text_routing.py         Similarity, contextual bandits, routing evidence
 │       └── test_anthropic_provider.py   Real provider against a fake HTTP transport
 └── app/                         SwiftUI Mac app (Swift package)
     ├── Package.swift

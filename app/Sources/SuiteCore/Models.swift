@@ -11,6 +11,32 @@ struct AnyKey: CodingKey {
     init?(intValue: Int) { stringValue = String(intValue); self.intValue = intValue }
 }
 
+/// Any JSON value, decoded so it can be handed to code that reads Foundation objects.
+struct JSONValue: Decodable {
+    let foundation: Any
+
+    init(from decoder: Decoder) throws {
+        if let keyed = try? decoder.container(keyedBy: AnyKey.self) {
+            var dict: [String: Any] = [:]
+            for key in keyed.allKeys {
+                dict[key.stringValue] = (try? keyed.decode(JSONValue.self, forKey: key))?.foundation ?? NSNull()
+            }
+            foundation = dict
+        } else if var list = try? decoder.unkeyedContainer() {
+            var items: [Any] = []
+            while !list.isAtEnd { items.append((try? list.decode(JSONValue.self))?.foundation ?? NSNull()) }
+            foundation = items
+        } else {
+            let single = try decoder.singleValueContainer()
+            if single.decodeNil() { foundation = NSNull() }
+            else if let b = try? single.decode(Bool.self) { foundation = b }
+            else if let d = try? single.decode(Double.self) { foundation = NSNumber(value: d) }
+            else if let s = try? single.decode(String.self) { foundation = s }
+            else { foundation = NSNull() }
+        }
+    }
+}
+
 extension KeyedDecodingContainer where K == AnyKey {
     func string(_ key: String) -> String? {
         if let s = try? decodeIfPresent(String.self, forKey: AnyKey(key)) { return s }
@@ -81,6 +107,54 @@ public enum UserRating: Sendable, Equatable {
     public var command: String { self == .up ? "up" : "down" }
 }
 
+/// A past task whose wording resembles the one being routed: the evidence text routing leaned on.
+public struct SimilarTask: Hashable, Sendable, Identifiable {
+    public var taskId: String
+    public var title: String
+    public var kind: String?
+    public var agent: String
+    public var variant: String?
+    public var reward: Double?
+    public var similarity: Double
+    public var id: String { taskId }
+
+    public init(taskId: String, title: String, kind: String? = nil, agent: String, variant: String? = nil,
+                reward: Double? = nil, similarity: Double) {
+        self.taskId = taskId; self.title = title; self.kind = kind; self.agent = agent
+        self.variant = variant; self.reward = reward; self.similarity = similarity
+    }
+
+    /// From the engine's JSON object; nil when it lacks the essentials.
+    public init?(json o: [String: Any]) {
+        guard let id = o["task_id"] as? String, let agent = o["agent"] as? String else { return nil }
+        self.init(taskId: id, title: o["title"] as? String ?? "Untitled task", kind: o["kind"] as? String,
+                  agent: agent, variant: o["variant"] as? String, reward: (o["reward"] as? NSNumber)?.doubleValue,
+                  similarity: (o["similarity"] as? NSNumber)?.doubleValue ?? 0)
+    }
+
+    public static func list(_ value: Any?) -> [SimilarTask] {
+        ((value as? [Any]) ?? []).compactMap { ($0 as? [String: Any]).flatMap(SimilarTask.init(json:)) }
+    }
+}
+
+/// Why a task went where it did: each agent's Thompson sample, and the similar past tasks.
+public struct RoutingEvidence: Hashable, Sendable {
+    public var samples: [String: Double]
+    public var similar: [SimilarTask]
+
+    public init(samples: [String: Double] = [:], similar: [SimilarTask] = []) {
+        self.samples = samples; self.similar = similar
+    }
+
+    public init(json o: [String: Any]) {
+        var samples: [String: Double] = [:]
+        for (k, v) in (o["samples"] as? [String: Any]) ?? [:] {
+            if let d = (v as? NSNumber)?.doubleValue { samples[k] = d }
+        }
+        self.init(samples: samples, similar: SimilarTask.list(o["similar"]))
+    }
+}
+
 public struct SuiteTask: Decodable, Identifiable, Hashable, Sendable {
     public var id: String
     public var runId: String?
@@ -99,6 +173,8 @@ public struct SuiteTask: Decodable, Identifiable, Hashable, Sendable {
     public var userRating: Int?
     public var costUsd: Double?
     public var round: Int?
+    /// Stored at dispatch by the engine, so past runs can still explain their routing.
+    public var routing: RoutingEvidence?
 
     public init(id: String, runId: String? = nil, seq: Int, title: String, description: String? = nil,
                 kind: String, dependsOn: [String] = [], status: TaskStatus = .pending,
@@ -134,6 +210,10 @@ public struct SuiteTask: Decodable, Identifiable, Hashable, Sendable {
         userRating = c.int("user_rating")
         costUsd = c.double("cost_usd")
         round = c.int("round")
+        if let raw = try? c.decodeIfPresent(JSONValue.self, forKey: AnyKey("routing")),
+           let obj = raw.foundation as? [String: Any] {
+            routing = RoutingEvidence(json: obj)
+        }
     }
 
     public var rating: UserRating? { UserRating(engineValue: userRating) }

@@ -10,6 +10,7 @@ import os
 import random
 import re
 import textwrap
+import zlib
 from dataclasses import dataclass, field
 
 from .config import VARIANTS, WEB_SEARCH_USD, Variant
@@ -138,6 +139,36 @@ TASK_TEMPLATES = {
     "physics": ("Check the physics", "First-principles feasibility: energy, forces, materials, with units."),
     "math": ("Build the quantitative model", "Unit economics or optimisation model, verified numerically."),
 }
+# Alternative tasks of the same kind whose wording calls for a different expert than the kind's
+# specialist: the kind label alone is too coarse to route them well. The mock judge knows this.
+HIDDEN_EXPERT_TEMPLATES = {
+    "strategy": ("Map the competitor landscape", "Competitor teardown with sources, their pricing and market gaps."),
+    "research": ("Survey gripper mechanisms", "Survey gripper and manipulator designs and how they grasp soft objects."),
+    "product": ("Set the pricing tiers", "Pricing elasticity model and tiers with a twelve-month revenue forecast."),
+    "marketing": ("Build the signup landing page", "A working landing page with a signup form and its code."),
+    "software": ("Build the vision dataset pipeline", "Collect and label a vision dataset and the training data pipeline."),
+    "hardware": ("Design the battery and thermal system", "Battery chemistry, thermal limits and an energy budget with units."),
+    "robotics": ("Design the vision model for grasp detection", "Train a vision model on a labelled dataset to find grasp points."),
+    "ai": ("Model the compute and pricing economics", "Forecast inference compute cost and the pricing that covers it."),
+    "physics": ("Design the drive motor and battery", "Motor torque and battery energy with thermal limits, in units."),
+    "math": ("Research prior proofs and competitor methods", "Literature and competitor survey of existing methods, with sources."),
+}
+HIDDEN_EXPERTS = {  # word in the task → the agent who is actually best at it
+    "competitor": "researcher", "gripper": "robotics", "manipulator": "robotics", "pricing": "math",
+    "elasticity": "math", "forecast": "math", "signup": "swe", "landing": "swe", "vision": "ai", "dataset": "ai",
+    "battery": "physics", "thermal": "physics", "torque": "physics",
+}
+
+
+def best_agent(kind: str, text: str, agents: dict) -> str | None:
+    """Who the mock judge rewards most for a task: a hidden expert if the wording names one."""
+    words = text.lower()
+    for word, expert in HIDDEN_EXPERTS.items():
+        if word in words:
+            return expert
+    return next((a["id"] for a in agents.values() if a.get("skills") and a["skills"][0] == kind), None)
+
+
 FOLLOW_UPS = [
     ("strategy", "Stress-test the plan", "List the five biggest risks across all work so far and a mitigation for each."),
     ("math", "Model the first-year financials", "Revenue, costs and cash by month for year one, with assumptions."),
@@ -176,7 +207,9 @@ class MockProvider(Provider):
         kinds.append("marketing")
         tasks = []
         for i, kind in enumerate(kinds):
-            title, desc = TASK_TEMPLATES[kind]
+            # Half the goals get the hidden-expert version of a kind's task (stable per goal and kind).
+            alt = zlib.crc32(f"{goal}|{kind}".encode()) % 2 == 1
+            title, desc = (HIDDEN_EXPERT_TEMPLATES if alt else TASK_TEMPLATES)[kind]
             deps = [] if kind in ("strategy", "research") else [1]
             tasks.append({"title": title, "description": desc, "kind": kind, "depends_on": [d for d in deps if d < i]})
         return self._text(json.dumps({"tasks": tasks}))
@@ -216,8 +249,14 @@ class MockProvider(Provider):
 
     def _judge(self, messages, meta):
         kind, skills, variant = meta.get("kind"), meta.get("skills", []), meta.get("variant")
+        text, agent = meta.get("text", "").lower(), meta.get("agent")
+        expert = next((e for w, e in HIDDEN_EXPERTS.items() if w in text), None)
         score = 0.40
-        if skills and skills[0] == kind:
+        if expert and agent == expert:
+            score += 0.35
+        elif expert:  # the kind's specialist is only middling when the work needs someone else
+            score += 0.10 if kind in skills else 0.0
+        elif skills and skills[0] == kind:
             score += 0.35
         elif kind in skills:
             score += 0.15

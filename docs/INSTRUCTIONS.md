@@ -26,8 +26,8 @@ The first launch takes about 20 seconds while uv sets up the engine's Python env
 
 1. **Settings (⌘,).** Paste your Anthropic API key. It's stored in the macOS Keychain. Set the cost cap per run (default $2), the task cap (default 40), and **Tasks at once** (default 3; independent tasks run side by side). With no key, or with **Use offline mock** on, runs use the mock.
 2. **New Run.** Type a goal, e.g. "Launch a company selling a home robot that folds laundry". Give the team files with **Upload…**, by dropping them anywhere on the window, or by pasting with ⌘V. Press **Start**.
-3. Watch the run. The CEO's plan appears, then each task shows which agent and model the bandits picked (and **why**, from the sampled scores), what tools it used, its reviewer score and its cost. **Cancel** stops the run cleanly and still writes a report.
-4. **Rate results.** 👍/👎 on any task overrides the reviewer's score and counts 3× (adjustable in Settings). Ratings change routing from the very next task.
+3. Watch the run. The CEO's plan appears, then each task shows which agent and model the bandits picked and **why**: the sampled scores, and the similar past tasks whose results counted. It also shows what tools the agent used, its reviewer score and its cost. The same explanation is kept for past runs. **Cancel** stops the run cleanly and still writes a report.
+4. **Rate results.** 👍/👎 on any task overrides the reviewer's score and counts 3× (adjustable in Settings). Ratings change routing from the very next task. **Task wording weight** in Settings (default 0.5) sets how much a task's wording, not just its kind, decides who gets it; 0 routes on kind alone.
 5. **Read the report** at the bottom of the run, or click **Open Output** to see a task's files in Finder.
 6. **Team** shows every agent. **Open Agents Folder** lets you edit their YAML: prompts, skills, allowed models. Add a file to add an agent.
 7. **Bandit** shows what has been learned: who gets which kind of work, and which model each agent does best on.

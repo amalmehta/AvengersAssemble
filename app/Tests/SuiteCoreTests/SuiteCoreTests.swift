@@ -24,7 +24,27 @@ final class EventDecodingTests: XCTestCase {
 
     func testTaskAssignedWithSamples() {
         let e = RunEventDecoder.decode(line: #"{"type":"task_assigned","task_id":"t_1","kind":"ai","agent":"ai","variant":"haiku","samples":{"ai":0.8,"swe":0.4}}"#)
-        XCTAssertEqual(e, .taskAssigned(taskId: "t_1", kind: "ai", agent: "ai", variant: "haiku", samples: ["ai": 0.8, "swe": 0.4]))
+        XCTAssertEqual(e, .taskAssigned(taskId: "t_1", kind: "ai", agent: "ai", variant: "haiku", samples: ["ai": 0.8, "swe": 0.4],
+                                        similar: []))
+    }
+
+    func testTaskAssignedWithSimilarTasks() {
+        let line = #"{"type":"task_assigned","task_id":"t_2","kind":"hardware","agent":"physics","variant":"opus-high","samples":{"physics":0.7},"similar":[{"task_id":"t_9","title":"Battery thermal limits","kind":"physics","agent":"physics","variant":"haiku","reward":0.9,"similarity":0.62},{"title":"no id"}]}"#
+        guard case let .taskAssigned(_, _, _, _, _, similar)? = RunEventDecoder.decode(line: line) else {
+            return XCTFail("not a task_assigned event")
+        }
+        XCTAssertEqual(similar, [SimilarTask(taskId: "t_9", title: "Battery thermal limits", kind: "physics", agent: "physics",
+                                             variant: "haiku", reward: 0.9, similarity: 0.62)])
+    }
+
+    func testTaskDecodesStoredRoutingEvidence() throws {
+        let json = #"{"id":"t_1","seq":1,"title":"A","kind":"math","routing":{"samples":{"math":0.81,"physics":0.4},"similar":[{"task_id":"t_0","title":"B","agent":"math","reward":1,"similarity":0.5}]}}"#
+        let task = try JSONDecoder().decode(SuiteTask.self, from: Data(json.utf8))
+        XCTAssertEqual(task.routing?.samples, ["math": 0.81, "physics": 0.4])
+        XCTAssertEqual(task.routing?.similar.first?.taskId, "t_0")
+        XCTAssertEqual(task.routing?.similar.first?.reward, 1)
+        let old = try JSONDecoder().decode(SuiteTask.self, from: Data(#"{"id":"t_1","seq":1,"title":"A","kind":"math","routing":null}"#.utf8))
+        XCTAssertNil(old.routing)
     }
 
     func testFinishedScoredBudgetRunFinished() {
@@ -207,6 +227,7 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual((raw["max_cost_usd"] as? NSNumber)?.doubleValue, 5.5)
         XCTAssertEqual((raw["max_agent_steps"] as? NSNumber)?.intValue, 10)
         XCTAssertEqual((raw["max_parallel_tasks"] as? NSNumber)?.intValue, 3)
+        XCTAssertEqual((raw["text_weight"] as? NSNumber)?.doubleValue, 0.5)
         try Data(#"{"max_parallel_tasks": 5}"#.utf8).write(to: url)
         XCTAssertEqual(SettingsFile.load(from: url).maxParallelTasks, 5)
     }

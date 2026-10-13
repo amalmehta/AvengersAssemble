@@ -13,6 +13,7 @@ from .agents import load_agents
 from .bandit import Bandits
 from .config import JUDGE_VARIANT, KIND_IDS, KINDS, PLANNER_VARIANT, VARIANTS, home, load_settings
 from .providers import Provider, ProviderError, Reply
+from .similarity import task_text
 from .store import Store
 from .tools import ToolError, Workspace
 
@@ -121,7 +122,8 @@ class Orchestrator:
             raise ProviderError(f"The {purpose} step returned malformed JSON.") from e
 
     def bandits(self) -> Bandits:
-        return Bandits(list(self.agents.values()), rng=self.rng, skill_priors=self.skill_priors).fit(
+        return Bandits(list(self.agents.values()), rng=self.rng, skill_priors=self.skill_priors,
+                       text_weight=float(self.settings.get("text_weight", 0.0))).fit(
             self.store.scored_tasks(), self.settings["user_rating_weight"], self.settings["cost_penalty_per_usd"])
 
     def budget_event(self) -> None:
@@ -264,13 +266,16 @@ class Orchestrator:
 
     def dispatch(self, task: dict) -> tuple[str, str]:
         bandits = self.bandits()
-        agent_id, samples = bandits.choose_agent(task["kind"])
-        variant_id, _ = bandits.choose_variant(agent_id)
+        text = task_text(task)
+        agent_id, samples = bandits.choose_agent(task["kind"], text)
+        variant_id, _ = bandits.choose_variant(agent_id, text)
+        routing = {"samples": {k: round(v, 4) for k, v in samples.items()}, "similar": bandits.similar(text)}
         with self.lock:
             self.tasks_started += 1
-            self.store.update_task(task["id"], status="running", agent=agent_id, variant=variant_id)
+            self.store.update_task(task["id"], status="running", agent=agent_id, variant=variant_id,
+                                   routing=json.dumps(routing))
         self.emit({"type": "task_assigned", "task_id": task["id"], "kind": task["kind"], "agent": agent_id,
-                   "variant": variant_id, "samples": {k: round(v, 4) for k, v in samples.items()}})
+                   "variant": variant_id, **routing})
         return agent_id, variant_id
 
     def work(self, goal: str, task: dict, agent_id: str, variant_id: str, ws: Workspace) -> None:
@@ -343,7 +348,8 @@ class Orchestrator:
         prompt = (f"Company goal: {goal}\n\nTask ({task['kind']}): {task['title']}\n{task['description']}\n\n"
                   f"Agent's summary: {summary}\n\nDeliverable:\n<<<\n{deliverable}\n>>>\n\n"
                   "Score from 0.0 (useless) to 1.0 (excellent, would act on it as-is), and give a one-sentence rationale.")
-        meta = {"kind": task["kind"], "skills": agent["skills"], "variant": variant_id}
+        meta = {"kind": task["kind"], "skills": agent["skills"], "variant": variant_id, "agent": agent["id"],
+                "text": task_text(task)}
         data, cost = self.call_json(JUDGE_VARIANT, reviewer["system"], prompt, JUDGE_SCHEMA, "judge", meta)
         score = min(1.0, max(0.0, float(data.get("score", 0))))
         with self.lock:

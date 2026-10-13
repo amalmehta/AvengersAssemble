@@ -103,6 +103,17 @@ public enum DemoData {
         "t_07": ["ai": 0.79, "swe": 0.58, "robotics": 0.52, "researcher": 0.47, "math": 0.33],
     ]
 
+    public static let similar: [String: [SimilarTask]] = [
+        "t_04": [
+            SimilarTask(taskId: "t_s1", title: "Design a soft gripper for picking up towels", kind: "robotics",
+                        agent: "hardware", variant: "sonnet-medium", reward: 0.88, similarity: 0.61),
+            SimilarTask(taskId: "t_s2", title: "Choose the folding mechanism and actuators", kind: "hardware",
+                        agent: "hardware", variant: "opus-high", reward: 0.82, similarity: 0.47),
+            SimilarTask(taskId: "t_s3", title: "Gripper force control for delicate fabrics", kind: "robotics",
+                        agent: "robotics", variant: "sonnet-medium", reward: 0.74, similarity: 0.33),
+        ],
+    ]
+
     public static let report = """
     # Laundry-folding home robot: launch plan
 

@@ -237,8 +237,10 @@ struct TaskDetail: View {
                         }
                     }
                 }
-                if let samples = state.samples[task.id], !samples.isEmpty {
-                    SamplesView(samples: samples, chosen: task.agent)
+                let samples = state.samples[task.id] ?? [:]
+                let similar = state.similar[task.id] ?? []
+                if !samples.isEmpty || !similar.isEmpty {
+                    SamplesView(samples: samples, similar: similar, chosen: task.agent)
                 }
                 if let notes = state.activity[task.id], !notes.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
@@ -278,6 +280,7 @@ struct TaskDetail: View {
 struct SamplesView: View {
     @Environment(AppModel.self) private var model
     var samples: [String: Double]
+    var similar: [SimilarTask] = []
     var chosen: String?
 
     var body: some View {
@@ -294,8 +297,31 @@ struct SamplesView: View {
                         .frame(width: 34, alignment: .trailing)
                 }
             }
-            Text(samples.count > 5 ? "Top 5 of \(samples.count). Each agent's skill was sampled from its posterior; the highest sample won." : "Each agent's skill was sampled from its posterior; the highest sample won.")
-                .font(.caption).foregroundStyle(.secondary)
+            if !samples.isEmpty {
+                Text(samples.count > 5 ? "Top 5 of \(samples.count). Each agent's skill was sampled from its posterior; the highest sample won." : "Each agent's skill was sampled from its posterior; the highest sample won.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            if !similar.isEmpty {
+                Text("Similar past tasks").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    .padding(.top, 4)
+                ForEach(similar) { s in
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(s.title).font(.callout).lineLimit(1).truncationMode(.tail)
+                            Text([model.agentName(s.agent), s.variant.map(Naming.variantName)].compactMap { $0 }
+                                    .joined(separator: " · "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        ScoreBadge(score: s.reward)
+                        Text("\(Int((s.similarity * 100).rounded()))% alike")
+                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            .frame(width: 64, alignment: .trailing)
+                    }
+                }
+                Text("Their results counted toward this choice in proportion to how alike the wording is.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 }

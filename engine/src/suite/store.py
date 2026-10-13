@@ -18,14 +18,15 @@ CREATE TABLE IF NOT EXISTS tasks (
     round INTEGER NOT NULL DEFAULT 1, title TEXT NOT NULL, description TEXT NOT NULL,
     kind TEXT NOT NULL, depends_on TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'pending',
     agent TEXT, variant TEXT, summary TEXT, output_path TEXT,
-    judge_score REAL, judge_rationale TEXT, user_rating INTEGER, cost_usd REAL NOT NULL DEFAULT 0
+    judge_score REAL, judge_rationale TEXT, user_rating INTEGER, cost_usd REAL NOT NULL DEFAULT 0,
+    routing TEXT
 );
 CREATE INDEX IF NOT EXISTS tasks_run ON tasks(run_id, seq);
 """
 
 TASK_FIELDS = ["id", "run_id", "seq", "round", "title", "description", "kind", "depends_on", "status",
                "agent", "variant", "summary", "output_path", "judge_score", "judge_rationale",
-               "user_rating", "cost_usd"]
+               "user_rating", "cost_usd", "routing"]
 
 
 def new_id(prefix: str) -> str:
@@ -48,6 +49,9 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
+        columns = {r["name"] for r in self.db.execute("PRAGMA table_info(tasks)")}
+        if "routing" not in columns:  # databases from before text routing
+            self.db.execute("ALTER TABLE tasks ADD COLUMN routing TEXT")
 
     # Runs
     @_locked
@@ -118,4 +122,5 @@ def _run_dict(row: sqlite3.Row) -> dict:
 def _task_dict(row: sqlite3.Row) -> dict:
     d = {k: row[k] for k in TASK_FIELDS}
     d["depends_on"] = json.loads(d["depends_on"] or "[]")
+    d["routing"] = json.loads(d["routing"]) if d["routing"] else None  # {samples, similar} at dispatch
     return d

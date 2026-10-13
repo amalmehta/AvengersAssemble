@@ -95,10 +95,16 @@ struct SettingsView: View {
                         Text(String(format: "%.2f", model.settings.costPenaltyPerUsd)).monospacedDigit().frame(width: 40, alignment: .trailing)
                     }
                 }
+                LabeledContent("Task wording weight") {
+                    HStack(spacing: 10) {
+                        Slider(value: $model.settings.textWeight, in: 0...1, step: 0.1).frame(width: 160)
+                        Text(String(format: "%.1f", model.settings.textWeight)).monospacedDigit().frame(width: 40, alignment: .trailing)
+                    }
+                }
             } header: {
                 Text("Learning")
             } footer: {
-                Text("How much your thumbs-up or thumbs-down outweighs the reviewer's score, and how much each dollar spent lowers a result's reward.")
+                Text("How much your thumbs-up or thumbs-down outweighs the reviewer's score, how much each dollar spent lowers a result's reward, and how much a task's wording (rather than only its kind) decides who gets it and on which model. 0 routes on kind alone.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

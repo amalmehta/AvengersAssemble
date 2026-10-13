@@ -14,6 +14,7 @@ DEFAULT_SETTINGS = {
     "cost_penalty_per_usd": 0.2,
     "max_agent_steps": 10,
     "max_parallel_tasks": 3,
+    "text_weight": 0.5,  # 0 = route on task kind only; 1 = on task wording only
 }
 
 # Task kinds, grouped into families. The app colours each family with one hue range.

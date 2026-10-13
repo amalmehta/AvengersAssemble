@@ -55,6 +55,8 @@ def cmd_run(args) -> int:
         settings["max_cost_usd"] = args.max_cost
     if args.max_tasks is not None:
         settings["max_tasks"] = args.max_tasks
+    if args.parallel is not None:
+        settings["max_parallel_tasks"] = max(1, args.parallel)
 
     def emit(event: dict) -> None:
         if args.json:
@@ -174,6 +176,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--mock", action="store_true", help="Use the offline mock instead of the Claude API")
     r.add_argument("--max-cost", type=float, help="Budget cap in US dollars for this run")
     r.add_argument("--max-tasks", type=int, help="Cap on tasks executed in this run")
+    r.add_argument("--parallel", type=int, help="How many independent tasks may run at once (1 = one at a time)")
     r.set_defaults(fn=cmd_run)
 
     for name, fn, help_ in [("runs", cmd_runs, "List runs"), ("agents", cmd_agents, "List agents"),

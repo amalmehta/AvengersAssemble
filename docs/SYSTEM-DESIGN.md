@@ -46,7 +46,7 @@ flowchart LR
 |---|---|---|
 | Mac app | `app/` | The UI. It starts and cancels runs, shows live progress, and records your ratings. It also browses past runs, the team and what the bandits have learned. Settings (⌘,), the feedback tab, and upload / drag-anywhere / ⌘V paste for input files live here too. It never calls the LLM itself. |
 | CLI | `engine/src/suite/cli.py` | `suite run / runs / show / rate / agents / bandit / kinds`. Every command has `--json`, which is the app's only interface to the engine. |
-| Orchestrator | `engine/src/suite/orchestrator.py` | Runs one goal: plan → route → work → judge → review (up to 3 rounds) → report. Enforces the budget and the task cap, and handles cancellation. |
+| Orchestrator | `engine/src/suite/orchestrator.py` | Runs one goal: plan → route → work → judge → review (up to 3 rounds) → report. Runs independent tasks in parallel worker threads, enforces the budget and the task cap, and handles cancellation. |
 | Bandits | `engine/src/suite/bandit.py` | Thompson sampling with Beta posteriors. The routing bandit has one arm per (kind, agent). Each agent has a variant bandit with one arm per (agent, model variant). |
 | Agents | `engine/src/suite/agents/*.yaml` → `<data>/agents/` | Name, role, skills (task kinds, primary skill first), allowed variants, and system prompt. Ten routable specialists plus the non-routable Reviewer. Edit them or add a file to add an agent. |
 | Tools | `engine/src/suite/tools.py` | `write_file`, `read_file`, `list_files` confined to the run's workspace, and `run_python` under macOS `sandbox-exec`. Web search is Anthropic's server-side tool. |
@@ -58,15 +58,18 @@ flowchart LR
 **A run.** `suite run "<goal>" [--input file…]`
 1. Uploaded files are copied to `runs/<id>/workspace/inputs/`.
 2. **Plan.** The CEO (Opus 5.5, structured JSON output) returns 4–10 tasks, each with a kind (one of 10) and dependencies.
-3. For each ready task, in dependency order:
-   - The **routing bandit** draws a sample for each routable agent from its Beta posterior for this kind and picks the highest.
+3. Every task whose dependencies have all finished is ready. Up to `max_parallel_tasks` (default 3) ready tasks run at once. For each one:
+   - On the main thread, one task at a time, the **routing bandit** draws a sample for each routable agent from its Beta posterior for this kind and picks the highest.
    - That agent's **variant bandit** picks `opus-high`, `sonnet-medium` or `haiku` the same way.
    - The agent runs a **tool loop** (up to `max_agent_steps`): web search, workspace files and sandboxed Python. It writes its deliverable to `workspace/tasks/NN-slug.md` and ends with a 2–3 sentence summary.
    - The **Reviewer** (Sonnet 5.5, structured output) scores the deliverable from 0 to 1 with a one-line rationale. That score is the reward.
+   - The work and the review run on a worker thread. When a task finishes, the scheduler dispatches whatever has just become ready.
 4. **Review.** The CEO reads all results and either declares the goal covered or adds up to 5 follow-up tasks (at most 3 rounds).
 5. **Report.** The CEO writes `report.md` from the deliverables. If the run stopped early (budget, cancel or error), a plain report is assembled from the task summaries without an LLM call.
 
-Every step emits a JSON-line event. The app renders them live, and they are also appended to `runs/<id>/events.jsonl`.
+Every step emits a JSON-line event. The app renders them live, and they are also appended to `runs/<id>/events.jsonl`. With parallel tasks, events from different tasks interleave; each carries its `task_id`.
+
+**Parallel execution.** Routing stays on the main thread, so bandit decisions are serialized. Tasks dispatched together don't see each other's rewards (batched Thompson sampling). In the mock simulation this didn't change where learning ends up: 68% specialist routing after 60 runs at 1 or 3 tasks at a time. One lock guards spend, the counters, the event stream and the SQLite connection. Provider calls run outside the lock, so they overlap. If a worker hits an error or the budget, the scheduler stops dispatching, waits for tasks in flight to finish, then ends the run. On cancel, workers stop at their next API call and record nothing more.
 
 **Rating.** `suite rate <task> up|down|clear` stores `user_rating` (1/0/null). Posteriors are rebuilt from the task table on every routing decision, so a rating takes effect on the next task, even mid-run.
 
@@ -80,7 +83,7 @@ The app finds `uv` and runs `uv run --project <engine> suite <command> --json`, 
 
 | Command | Output |
 |---|---|
-| `run "<goal>" [--input P]… [--mock] [--max-cost $] [--max-tasks N]` | JSON lines (events below) until `run_finished`. SIGTERM → status `canceled`. |
+| `run "<goal>" [--input P]… [--mock] [--max-cost $] [--max-tasks N] [--parallel N]` | JSON lines (events below) until `run_finished`. SIGTERM → status `canceled`. |
 | `runs` | `[{id, goal, status, created_at, spent_usd, task_count, mock}]`, newest first |
 | `show <run_id>` | `{run: {…, report, workspace}, tasks: [Task]}` |
 | `rate <task_id> up\|down\|clear` | `{ok, task_id, rating}` |
@@ -108,7 +111,7 @@ All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Suite 
 
 | Path | Contents | Written by |
 |---|---|---|
-| `settings.json` | `mock`, `max_cost_usd` (2), `max_tasks` (40), `user_rating_weight` (3), `cost_penalty_per_usd` (0.2), `max_agent_steps` (10) | App Settings |
+| `settings.json` | `mock`, `max_cost_usd` (2), `max_tasks` (40), `user_rating_weight` (3), `cost_penalty_per_usd` (0.2), `max_agent_steps` (10), `max_parallel_tasks` (3) | App Settings |
 | `agents/*.yaml` | The editable roster, seeded from the defaults on first use | You |
 | `suite.db` | Runs and tasks (the reward log) | Engine |
 | `runs/<id>/workspace/` | `inputs/` (your uploads) and `tasks/` (deliverables), plus any code or data the agents made | Agents |
@@ -125,7 +128,7 @@ The API key lives only in the macOS Keychain (service "Suite of Agents"). It is 
 - **Posteriors recomputed from the task table** rather than stored as counters. Ratings and edits to priors apply retroactively, and nothing can drift out of sync. The cost is O(tasks) per decision, which is trivial at this scale.
 - **Kinds as the routing context.** Ten fixed kinds keep the arm count manageable (10 × 10 routing arms) and give the app a stable colour scheme.
 - **LLM judge + weighted human rating.** The judge makes learning automatic. Your rating outranks it 3:1 because the judge can share the agents' blind spots.
-- **Sequential task execution.** It is simple, keeps the budget accounting exact, and lets each bandit decision see the previous reward. The trade-off is wall-clock time: parallel execution of independent tasks is a natural next step.
+- **Parallel tasks on threads, routing on one thread.** Agent work is almost entirely waiting on the API, so threads give real overlap without the cost of extra processes. Keeping routing serialized keeps bandit decisions simple and lets tests reason about them. The trade-offs: batched decisions use slightly staler posteriors, and the budget check happens before each call, so with N tasks in flight a run can overshoot its cap by up to N calls. Set "Tasks at once" to 1 for exact sequential behaviour.
 - **Safety.** No send, buy or publish tools. Code runs in a `sandbox-exec` profile that denies network access and writes outside the workspace. Every run has a dollar cap and a task cap. Opus and Sonnet requests use `fallbacks: "default"`, so a safety-classifier decline is retried on Anthropic's recommended fallback model instead of failing the task.
 - **Offline mock as a first-class provider.** The whole system (app included) runs, demos and tests with no key and no cost. The mock judge rewards specialists and stronger models, with noise, so bandit learning is observable.
 
@@ -136,13 +139,14 @@ The API key lives only in the macOS Keychain (service "Suite of Agents"). It is 
 - **Tools.** Path escapes are rejected. The sandbox blocks network access and writes outside the workspace.
 - **Orchestration (mock).** A full run covers the event sequence, both rounds, inputs copied, the report and the event log. The budget cap and task cap each stop a run cleanly with a report. Learning across runs is checked too.
 - **Real provider via fake HTTP transport.** The exact request shape is checked: model IDs, effort, `fallbacks: "default"` with its beta header, tool list, the web-search tool version per model, structured outputs and cost arithmetic. A whole run is driven against scripted API replies, including the tool loop echoing assistant blocks unchanged.
-- **CLI.** Every `--json` command, plus SIGTERM → `canceled`.
+- **Parallel execution.** Overlap reaches the limit and dependencies are respected (no task starts before its dependencies finish). Parallel runs are faster than sequential ones, and a limit of 1 never overlaps. The task cap counts dispatched tasks. The budget cap and worker errors drain tasks in flight with none left `running`. Concurrent `run_python` calls don't collide.
+- **CLI.** Every `--json` command, plus SIGTERM → `canceled` (with parallel tasks in flight).
 - **App.** `cd app && swift test` covers event decoding and the colour palette (families share a hue range; siblings are distinguishable).
 
 ## Known limits
 
 - The live Claude path has been tested only against a fake transport. No API key was available during the build, so the first real run is the first live test. Start with a low budget.
-- Tasks run one at a time.
+- With several tasks in flight, a run can overshoot its cost cap by up to one API call per running task.
 - Routing context is the task's kind only. Two very different "software" tasks share one posterior.
 - `sandbox-exec` is deprecated by Apple (though still functional). It confines writes and network access, not CPU or memory beyond the 60 s timeout.
 - Costs are computed from list prices in `config.py` and must be updated when prices change. On a refusal fallback, all attempts are priced at the requested model's rates.

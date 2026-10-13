@@ -35,6 +35,7 @@ public struct EngineSettings: Equatable, Sendable {
     public var userRatingWeight: Double = 3.0
     public var costPenaltyPerUsd: Double = 0.2
     public var maxAgentSteps: Int = 10
+    public var maxParallelTasks: Int = 3
 
     public init() {}
 
@@ -45,12 +46,13 @@ public struct EngineSettings: Equatable, Sendable {
         if let v = (o["user_rating_weight"] as? NSNumber)?.doubleValue { userRatingWeight = v }
         if let v = (o["cost_penalty_per_usd"] as? NSNumber)?.doubleValue { costPenaltyPerUsd = v }
         if let v = (o["max_agent_steps"] as? NSNumber)?.intValue { maxAgentSteps = v }
+        if let v = (o["max_parallel_tasks"] as? NSNumber)?.intValue { maxParallelTasks = v }
     }
 
     public var json: [String: Any] {
         ["mock": mock, "max_cost_usd": maxCostUsd, "max_tasks": maxTasks,
          "user_rating_weight": userRatingWeight, "cost_penalty_per_usd": costPenaltyPerUsd,
-         "max_agent_steps": maxAgentSteps]
+         "max_agent_steps": maxAgentSteps, "max_parallel_tasks": maxParallelTasks]
     }
 }
 

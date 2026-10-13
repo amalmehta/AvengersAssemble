@@ -206,6 +206,9 @@ final class StorageTests: XCTestCase {
         XCTAssertEqual(raw["mock"] as? Bool, false)
         XCTAssertEqual((raw["max_cost_usd"] as? NSNumber)?.doubleValue, 5.5)
         XCTAssertEqual((raw["max_agent_steps"] as? NSNumber)?.intValue, 10)
+        XCTAssertEqual((raw["max_parallel_tasks"] as? NSNumber)?.intValue, 3)
+        try Data(#"{"max_parallel_tasks": 5}"#.utf8).write(to: url)
+        XCTAssertEqual(SettingsFile.load(from: url).maxParallelTasks, 5)
     }
 
     func testFeedbackAppends() throws {

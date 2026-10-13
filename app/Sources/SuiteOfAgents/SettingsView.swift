@@ -72,6 +72,14 @@ struct SettingsView: View {
                         Stepper("", value: $model.settings.maxAgentSteps, in: 1...100).labelsHidden()
                     }
                 }
+                LabeledContent("Tasks at once") {
+                    HStack(spacing: 6) {
+                        TextField("", value: $model.settings.maxParallelTasks, format: .number)
+                            .textFieldStyle(.roundedBorder).frame(width: 80).multilineTextAlignment(.trailing)
+                        Stepper("", value: $model.settings.maxParallelTasks, in: 1...8).labelsHidden()
+                    }
+                }
+                .help("Independent tasks run side by side, up to this many. 1 runs them one at a time.")
             } header: { Text("Budget") }
 
             Section {

@@ -37,7 +37,7 @@ def simulate(skill_priors: bool) -> list[float]:
     home = Path(tempfile.mkdtemp())
     share = []
     for i in range(RUNS):
-        orch = Orchestrator(MockProvider(seed=i), lambda e: None, settings=dict(DEFAULT_SETTINGS), suite_home=home,
+        orch = Orchestrator(MockProvider(seed=i), lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1}, suite_home=home,
                             rng=random.Random(100 + i), skill_priors=skill_priors)
         run_id = orch.run(GOALS[i % len(GOALS)])
         tasks = [t for t in orch.store.tasks(run_id) if t["judge_score"] is not None]

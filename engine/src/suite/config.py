@@ -13,6 +13,7 @@ DEFAULT_SETTINGS = {
     "user_rating_weight": 3.0,
     "cost_penalty_per_usd": 0.2,
     "max_agent_steps": 10,
+    "max_parallel_tasks": 3,
 }
 
 # Task kinds, grouped into families. The app colours each family with one hue range.

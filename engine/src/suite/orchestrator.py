@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import queue
 import re
 import shutil
+import threading
 from pathlib import Path
 from typing import Callable
 
@@ -66,6 +68,7 @@ class Orchestrator:
     def __init__(self, provider: Provider, emit: Callable[[dict], None], store: Store | None = None,
                  settings: dict | None = None, suite_home: Path | None = None, rng=None, skill_priors: bool = True):
         self.home = suite_home or home()
+        self.home.mkdir(parents=True, exist_ok=True)
         self.provider = provider
         self.settings = settings or load_settings()
         self.store = store or Store(self.home / "suite.db")
@@ -74,28 +77,34 @@ class Orchestrator:
         self.rng = rng
         self.skill_priors = skill_priors
         self.spent = 0.0
+        self.tasks_started = 0  # dispatched to a worker; the task cap counts these
         self.tasks_done = 0
         self.canceled = False
+        # Guards spend, the store, the counters and the event stream, which worker threads share.
+        self.lock = threading.RLock()
         self.run_id = ""
         self.events_file = None
 
     # --- plumbing -------------------------------------------------------------------
     def emit(self, event: dict) -> None:
-        if self.events_file:
-            self.events_file.write(json.dumps(event) + "\n")
-            self.events_file.flush()
-        self.emit_cb(event)
+        with self.lock:
+            if self.events_file:
+                self.events_file.write(json.dumps(event) + "\n")
+                self.events_file.flush()
+            self.emit_cb(event)
 
     def call(self, variant_id: str, system: str, messages: list[dict], **kw) -> tuple[Reply, float]:
-        if self.canceled:
-            raise Canceled()
-        if self.spent >= self.settings["max_cost_usd"]:
-            raise BudgetExceeded()
+        with self.lock:
+            if self.canceled:
+                raise Canceled()
+            if self.spent >= self.settings["max_cost_usd"]:
+                raise BudgetExceeded()
         variant = VARIANTS[variant_id]
-        reply = self.provider.create(variant, system, messages, **kw)
+        reply = self.provider.create(variant, system, messages, **kw)  # outside the lock: calls run concurrently
         cost = reply.usage.cost(variant)
-        self.spent += cost
-        self.store.update_run(self.run_id, spent_usd=self.spent)
+        with self.lock:
+            self.spent += cost
+            self.store.update_run(self.run_id, spent_usd=self.spent)
         return reply, cost
 
     def call_json(self, variant_id: str, system: str, prompt: str, schema: dict, purpose: str,
@@ -116,8 +125,10 @@ class Orchestrator:
             self.store.scored_tasks(), self.settings["user_rating_weight"], self.settings["cost_penalty_per_usd"])
 
     def budget_event(self) -> None:
-        self.emit({"type": "budget", "spent_usd": round(self.spent, 4), "max_cost_usd": self.settings["max_cost_usd"],
-                   "tasks_done": self.tasks_done, "max_tasks": self.settings["max_tasks"]})
+        with self.lock:
+            self.emit({"type": "budget", "spent_usd": round(self.spent, 4),
+                       "max_cost_usd": self.settings["max_cost_usd"], "tasks_done": self.tasks_done,
+                       "max_tasks": self.settings["max_tasks"]})
 
     # --- the run --------------------------------------------------------------------
     def run(self, goal: str, inputs: list[Path] | None = None) -> str:
@@ -146,9 +157,12 @@ class Orchestrator:
         except ProviderError as e:
             status = "error"
             self.emit({"type": "error", "message": str(e)})
-        for t in self.store.tasks(self.run_id):
-            if t["status"] in ("pending", "running"):
-                self.store.update_task(t["id"], status="skipped")
+        with self.lock:
+            if status == "canceled":
+                self.canceled = True  # workers still in flight stop at their next call and record nothing
+            for t in self.store.tasks(self.run_id):
+                if t["status"] in ("pending", "running"):
+                    self.store.update_task(t["id"], status="skipped")
         report_path = run_dir / "report.md"
         report_path.write_text(self.report(goal, ws, allow_llm=status == "done"))
         self.store.update_run(self.run_id, status=status, spent_usd=self.spent)
@@ -190,7 +204,7 @@ class Orchestrator:
         """CEO looks at the results so far and adds follow-up tasks. Returns True if it added any."""
         ceo = self.agents["ceo"]
         tasks = self.store.tasks(self.run_id)
-        room = self.settings["max_tasks"] - self.tasks_done
+        room = self.settings["max_tasks"] - self.tasks_started
         if room <= 0:
             return False
         lines = "\n".join(f"{t['seq']}. [{t['kind']}] {t['title']} ({t['status']}, score {t['judge_score']}): "
@@ -206,25 +220,61 @@ class Orchestrator:
         return bool(new)
 
     def execute_ready(self, goal: str, ws: Workspace) -> None:
-        while True:
-            tasks = self.store.tasks(self.run_id)
-            finished = {t["id"] for t in tasks if t["status"] in ("done", "failed", "skipped")}
-            ready = [t for t in tasks if t["status"] == "pending" and all(d in finished for d in t["depends_on"])]
-            if not ready:
-                return
-            if self.tasks_done >= self.settings["max_tasks"]:
-                raise BudgetExceeded()
-            self.execute(goal, ready[0], ws)
+        """Run every task whose dependencies are finished, up to max_parallel_tasks at a time.
 
-    def execute(self, goal: str, task: dict, ws: Workspace) -> None:
+        Routing happens here on the main thread, one task at a time, so bandit decisions stay serialized.
+        Tasks dispatched together don't see each other's rewards (batched Thompson sampling).
+        """
+        limit = max(1, int(self.settings.get("max_parallel_tasks", 1)))
+        results: queue.Queue = queue.Queue()
+        running: set[str] = set()
+        failure: BaseException | None = None
+        while True:
+            if failure is None:
+                tasks = self.store.tasks(self.run_id)
+                finished = {t["id"] for t in tasks if t["status"] in ("done", "failed", "skipped")}
+                ready = [t for t in tasks if t["status"] == "pending"
+                         and all(d in finished for d in t["depends_on"])]
+                while ready and len(running) < limit and self.tasks_started < self.settings["max_tasks"]:
+                    task = ready.pop(0)
+                    agent_id, variant_id = self.dispatch(task)
+                    running.add(task["id"])
+                    threading.Thread(target=self._worker, args=(results, goal, task, agent_id, variant_id, ws),
+                                     name=f"task-{task['seq']}", daemon=True).start()
+                if not running:
+                    if ready:  # work is left but the task cap is reached
+                        raise BudgetExceeded()
+                    return
+            elif not running:
+                raise failure
+            try:
+                task_id, error = results.get(timeout=0.25)
+            except queue.Empty:
+                continue
+            running.discard(task_id)
+            if error is not None and failure is None:
+                failure = error  # stop dispatching; let the tasks in flight finish, then raise
+
+    def _worker(self, results: queue.Queue, goal, task, agent_id, variant_id, ws) -> None:
+        try:
+            self.work(goal, task, agent_id, variant_id, ws)
+            results.put((task["id"], None))
+        except BaseException as e:  # reported to the scheduler on the main thread
+            results.put((task["id"], e))
+
+    def dispatch(self, task: dict) -> tuple[str, str]:
         bandits = self.bandits()
         agent_id, samples = bandits.choose_agent(task["kind"])
         variant_id, _ = bandits.choose_variant(agent_id)
-        agent = self.agents[agent_id]
-        self.store.update_task(task["id"], status="running", agent=agent_id, variant=variant_id)
+        with self.lock:
+            self.tasks_started += 1
+            self.store.update_task(task["id"], status="running", agent=agent_id, variant=variant_id)
         self.emit({"type": "task_assigned", "task_id": task["id"], "kind": task["kind"], "agent": agent_id,
                    "variant": variant_id, "samples": {k: round(v, 4) for k, v in samples.items()}})
+        return agent_id, variant_id
 
+    def work(self, goal: str, task: dict, agent_id: str, variant_id: str, ws: Workspace) -> None:
+        agent = self.agents[agent_id]
         slug = slugify(task["title"], task["seq"])
         all_tasks = {t["id"]: t for t in self.store.tasks(self.run_id)}
         deps = "\n".join(f"- {all_tasks[d]['title']}: {all_tasks[d]['summary'] or '(no summary)'} "
@@ -274,8 +324,12 @@ class Orchestrator:
 
         output = f"tasks/{slug}.md"
         output_path = f"workspace/{output}" if (ws.root / output).exists() else None
-        self.tasks_done += 1
-        self.store.update_task(task["id"], status=status, summary=summary, output_path=output_path, cost_usd=cost)
+        with self.lock:
+            if self.canceled:
+                raise Canceled()
+            self.tasks_done += 1
+            self.store.update_task(task["id"], status=status, summary=summary, output_path=output_path,
+                                   cost_usd=cost)
         self.emit({"type": "task_finished", "task_id": task["id"], "status": status, "summary": summary,
                    "output_path": output_path, "cost_usd": round(cost, 4)})
         if status == "done":
@@ -292,9 +346,12 @@ class Orchestrator:
         meta = {"kind": task["kind"], "skills": agent["skills"], "variant": variant_id}
         data, cost = self.call_json(JUDGE_VARIANT, reviewer["system"], prompt, JUDGE_SCHEMA, "judge", meta)
         score = min(1.0, max(0.0, float(data.get("score", 0))))
-        current = self.store.task(task["id"])
-        self.store.update_task(task["id"], judge_score=score, judge_rationale=data.get("rationale", ""),
-                               cost_usd=(current["cost_usd"] or 0) + cost)
+        with self.lock:
+            if self.canceled:
+                raise Canceled()
+            current = self.store.task(task["id"])
+            self.store.update_task(task["id"], judge_score=score, judge_rationale=data.get("rationale", ""),
+                                   cost_usd=(current["cost_usd"] or 0) + cost)
         self.emit({"type": "task_scored", "task_id": task["id"], "score": round(score, 3),
                    "rationale": data.get("rationale", "")})
 

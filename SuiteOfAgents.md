@@ -74,7 +74,8 @@ Decided without asking:
 - Thompson sampling with Beta posteriors over 10 fixed task kinds (strategy, marketing, product, software, hardware, robotics, research, ai, math, physics), colour-grouped into business / engineering / science.
 - Informative routing priors from each agent's declared skills; flat priors learned too slowly with 10 agents (measured, see SYSTEM-DESIGN.md).
 - Variant reward is reduced by $0.20 per dollar of task cost, so cheaper models win when nearly as good.
-- The CEO plans on Opus 5.5 and the Reviewer scores on Sonnet 5.5 (not bandit-routed). Up to 3 plan/review rounds. Tasks run one at a time.
+- The CEO plans on Opus 5.5 and the Reviewer scores on Sonnet 5.5 (not bandit-routed). Up to 3 plan/review rounds.
+- Parallel tasks (added on request after v1): up to 3 independent tasks run at once by default ("Tasks at once" in Settings, `--parallel` on the CLI). Routing stays on one thread.
 - Opus/Sonnet requests use refusal fallbacks (`fallbacks: "default"`).
 - Python runs under macOS sandbox-exec: no network, writes only inside the run's workspace, 60 s limit.
 - The website is a later, separate step and was not built.
@@ -84,6 +85,7 @@ Decided without asking:
 CHANGELOG:
 
 - 2026-10-13 — created
+- 2026-10-13 — independent tasks run in parallel (default 3 at once; new setting "Tasks at once" and `--parallel` flag)
 - 2026-10-13 — built v1: Mac app + Python engine, layered Thompson-sampling bandits, 10 agents + Reviewer, offline mock, docs, public GitHub repo
 - 2026-09-15 — added meta-instruction: built-out applications include a small feedback tab
 - 2026-09-15 — added meta-instruction: no "Claude" attribution in commits, PRs, or branches

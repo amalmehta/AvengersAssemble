@@ -3,6 +3,7 @@ import random
 import signal
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -11,7 +12,7 @@ from suite.bandit import Bandits, task_reward
 from suite.cli import main
 from suite.config import DEFAULT_SETTINGS, KIND_IDS
 from suite.orchestrator import Orchestrator
-from suite.providers import MockProvider, _drop_pre_fallback
+from suite.providers import MockProvider, ProviderError, _drop_pre_fallback
 from suite.store import Store
 from suite.tools import ToolError, Workspace
 
@@ -140,8 +141,9 @@ def test_task_cap(home):
 def test_mock_bandit_learns_over_runs(home):
     """Across runs the routing bandit should come to prefer specialists (the mock judge rewards them)."""
     for i in range(6):
-        Orchestrator(MockProvider(seed=i), lambda e: None, settings=dict(DEFAULT_SETTINGS), suite_home=home,
-                     rng=random.Random(i)).run("Launch a company selling a home robot that folds laundry")
+        # One task at a time keeps the mock's random stream in a fixed order, so this stays deterministic.
+        Orchestrator(MockProvider(seed=i), lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1},
+                     suite_home=home, rng=random.Random(i)).run("Launch a company selling a home robot that folds laundry")
     store = Store(home / "suite.db")
     late = [t for t in store.scored_tasks() if t["run_id"] in [r["id"] for r in store.runs()[:2]]]
     early = [t for t in store.scored_tasks() if t["run_id"] in [r["id"] for r in store.runs()[-2:]]]
@@ -187,3 +189,106 @@ def test_sigterm_cancels_run(home, tmp_path):
     out, _ = proc.communicate(timeout=20)
     last = json.loads(out.strip().splitlines()[-1])
     assert last["type"] == "run_finished" and last["status"] == "canceled"
+
+
+# --- parallel execution -------------------------------------------------------------
+
+class SlowMock(MockProvider):
+    """Mock whose agent work takes a while, and which records how many work calls overlap."""
+
+    def __init__(self, delay=0.15, **kw):
+        super().__init__(**kw)
+        self.delay, self.active, self.peak = delay, 0, 0
+        self.gate = threading.Lock()
+
+    def create(self, variant, system, messages, *, purpose, **kw):
+        if purpose == "work":
+            with self.gate:
+                self.active += 1
+                self.peak = max(self.peak, self.active)
+            try:
+                time.sleep(self.delay)
+                return super().create(variant, system, messages, purpose=purpose, **kw)
+            finally:
+                with self.gate:
+                    self.active -= 1
+        return super().create(variant, system, messages, purpose=purpose, **kw)
+
+
+def run_with(home, parallel, provider=None, **settings):
+    events = []
+    provider = provider or SlowMock(seed=1)
+    orch = Orchestrator(provider, events.append, suite_home=home, rng=random.Random(1),
+                        settings={**DEFAULT_SETTINGS, "max_parallel_tasks": parallel, **settings})
+    run_id = orch.run("Launch a company selling a home robot that folds laundry")
+    return orch, run_id, events, provider
+
+
+def test_independent_tasks_run_in_parallel_and_respect_dependencies(home):
+    orch, run_id, events, provider = run_with(home, 3)
+    assert events[-1]["status"] == "done"
+    assert provider.peak == 3
+    tasks = {t["id"]: t for t in orch.store.tasks(run_id)}
+    assert all(t["status"] == "done" and t["judge_score"] is not None for t in tasks.values())
+    position = {}
+    for i, e in enumerate(events):
+        if e["type"] in ("task_assigned", "task_finished"):
+            position[(e["type"], e["task_id"])] = i
+    for t in tasks.values():
+        for dep in t["depends_on"]:  # a task only starts after everything it depends on has finished
+            assert position[("task_finished", dep)] < position[("task_assigned", t["id"])]
+
+
+def test_parallel_is_faster_than_sequential(home, tmp_path):
+    start = time.monotonic()
+    run_with(home, 1)
+    sequential = time.monotonic() - start
+    start = time.monotonic()
+    _, _, _, provider = run_with(tmp_path / "other", 4)
+    assert provider.peak > 1
+    assert time.monotonic() - start < sequential * 0.8
+
+
+def test_parallel_one_never_overlaps(home):
+    _, _, events, provider = run_with(home, 1)
+    assert provider.peak == 1 and events[-1]["status"] == "done"
+
+
+def test_parallel_task_cap_counts_dispatched_tasks(home):
+    orch, run_id, events, _ = run_with(home, 3, max_tasks=4)
+    assert events[-1]["status"] == "budget"
+    statuses = [t["status"] for t in orch.store.tasks(run_id)]
+    assert statuses.count("done") == 4 and "running" not in statuses
+
+
+def test_parallel_budget_cap_drains_in_flight_tasks(home):
+    orch, run_id, events, _ = run_with(home, 3, max_cost_usd=0.02)
+    assert events[-1]["status"] == "budget"
+    assert "running" not in [t["status"] for t in orch.store.tasks(run_id)]
+    assert events[-1]["type"] == "run_finished" and events[-2]["type"] == "budget"
+
+
+def test_worker_error_stops_dispatch_and_ends_run_with_error(home):
+    class BadJudge(SlowMock):
+        def _judge(self, messages, meta):
+            raise ProviderError("judge exploded")
+    orch, run_id, events, _ = run_with(home, 3, provider=BadJudge(seed=1))
+    assert events[-1]["status"] == "error"
+    assert any(e["type"] == "error" and "judge exploded" in e["message"] for e in events)
+    statuses = [t["status"] for t in orch.store.tasks(run_id)]
+    assert "running" not in statuses and "skipped" in statuses
+
+
+def test_concurrent_run_python_calls_do_not_collide(tmp_path):
+    ws = Workspace(tmp_path / "ws")
+    outputs = {}
+
+    def go(n):
+        outputs[n] = ws.run("run_python", {"code": f"import time; time.sleep(0.2); print('result-{n}')"})
+    threads = [threading.Thread(target=go, args=(n,)) for n in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert all(f"result-{n}" in outputs[n] for n in range(4))
+    assert not list((ws.root / ".tmp").glob("*.py"))  # scripts cleaned up

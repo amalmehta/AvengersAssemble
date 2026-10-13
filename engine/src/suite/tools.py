@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 MAX_OUTPUT = 12_000
@@ -83,13 +84,16 @@ class Workspace:
         raise ToolError(f"Unknown tool {name}")
 
     def run_python(self, code: str) -> str:
-        script = self.root / ".run.py"
-        script.write_text(code)
+        tmp = self.root / ".tmp"
+        tmp.mkdir(exist_ok=True)
+        # A unique script per call: agents working in parallel share this workspace.
+        fd, name = tempfile.mkstemp(suffix=".py", dir=tmp)
+        script = Path(name)
+        with os.fdopen(fd, "w") as f:
+            f.write(code)
         cmd = [sys.executable, "-I", str(script)]
         if shutil.which("sandbox-exec"):
             cmd = ["sandbox-exec", "-p", sandbox_profile(self.root), *cmd]
-        tmp = self.root / ".tmp"
-        tmp.mkdir(exist_ok=True)
         env = {"PATH": "/usr/bin:/bin", "HOME": str(self.root), "TMPDIR": str(tmp)}
         try:
             proc = subprocess.run(cmd, cwd=self.root, env=env, capture_output=True, text=True,

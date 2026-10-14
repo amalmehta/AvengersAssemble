@@ -54,6 +54,7 @@ flowchart LR
 | Inputs | `engine/src/suite/inputs.py` | Prepares uploads once per run, sandboxed: HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px; PDF page counts and text; DOCX/XLSX/PPTX → Markdown. Writes the CEO's planning digest. |
 | Providers | `engine/src/suite/providers.py` | `AnthropicProvider` (Messages API with tools, structured outputs, effort and refusal fallbacks) and `MockProvider` (deterministic offline stand-in with the same interface). |
 | Store | `engine/src/suite/store.py` | SQLite: `runs` and `tasks`. A task row holds its routing choice, judge score, your rating and cost, so it is also the reward log. |
+| Website | `site/index.html` | A static landing page on GitHub Pages (https://amalmehta.github.io/AvengersAssemble/), built by `scripts/build-site.sh` and published by `.github/workflows/pages.yml`. Its Download button points at the latest GitHub release's `AvengersAssemble.zip` (a universal, ad-hoc-signed, not notarized app). |
 
 ## Main flows
 

@@ -4,6 +4,8 @@
 AvengersAssemble/
 ├── README.md                    What it is, with pictures and links
 ├── AvengersAssemble.md          The project brief, decisions and changelog
+├── .github/workflows/pages.yml  Publishes the website to GitHub Pages on pushes to main
+├── site/index.html              The website: one self-contained page (images come from docs/images)
 ├── docs/
 │   ├── INSTRUCTIONS.md          Setup, run, use, test
 │   ├── SYSTEM-DESIGN.md         Architecture, flows, protocol, data, trade-offs, limits
@@ -12,6 +14,8 @@ AvengersAssemble/
 ├── scripts/
 │   ├── build-app.sh             Builds "build/Avengers Assemble.app" with the engine bundled inside
 │   ├── make-icon.sh             Renders the app icon from its SwiftUI drawing into app/Resources/AppIcon.icns
+│   ├── build-site.sh            Assembles the website into build/site (page + the images it uses)
+│   ├── package-release.sh       Builds a universal app and zips it as build/AvengersAssemble.zip
 │   └── bandit_chart.py          Simulates offline runs and draws the learning chart (wording vs kind-only routing)
 ├── engine/                      Python engine: the `suite` command
 │   ├── pyproject.toml, uv.lock

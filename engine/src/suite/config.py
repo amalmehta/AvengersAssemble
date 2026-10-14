@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -55,11 +56,28 @@ PLANNER_VARIANT = "opus-high"
 JUDGE_VARIANT = "sonnet-medium"
 
 
+APP_NAME = "Avengers Assemble"
+LEGACY_APP_NAME = "Suite of Agents"  # the data folder's name before the rename
+
+
 def home() -> Path:
     env = os.environ.get("SUITE_HOME")
-    path = Path(env) if env else Path.home() / "Library" / "Application Support" / "Suite of Agents"
+    path = Path(env) if env else migrate_legacy_home(Path.home() / "Library" / "Application Support")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def migrate_legacy_home(support: Path) -> Path:
+    """Moves the data folder from its old name the first time; the Mac app does the same.
+    The Python environment inside is deleted, since it holds absolute paths. If both exist, nothing moves."""
+    current, legacy = support / APP_NAME, support / LEGACY_APP_NAME
+    if not current.exists() and legacy.is_dir():
+        try:
+            legacy.rename(current)
+            shutil.rmtree(current / "venv", ignore_errors=True)
+        except OSError:
+            return legacy if not current.exists() else current
+    return current
 
 
 def load_settings() -> dict:

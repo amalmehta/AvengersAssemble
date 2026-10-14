@@ -57,7 +57,7 @@ enum ScreenshotRenderer {
     }
 
     private static func renderWindow<V: View>(_ view: V, size: NSSize?, appearance: NSAppearance.Name, to url: URL,
-                                              titled: Bool, title: String = "Suite of Agents") -> Bool {
+                                              titled: Bool, title: String = AppInfo.name) -> Bool {
         let hosting = NSHostingView(rootView: view)
         hosting.sceneBridgingOptions = [.toolbars, .title]
         let contentSize = size ?? hosting.fittingSize

@@ -1,6 +1,6 @@
-# Suite of Agents: System Design
+# Avengers Assemble: System Design
 
-Suite of Agents is a company made of AI agents. You give it a goal ("launch a company selling a home robot that folds laundry"). A CEO agent breaks the goal into tasks. Two layers of multi-armed bandits decide **which specialist** does each task and **which model** it runs on, based on the task's kind and on what the task says. A reviewer agent scores every result, and your 👍/👎 overrides the reviewer. The bandits learn from those rewards, so the team gets better at routing work the more you use it.
+Avengers Assemble is a company made of AI agents. You give it a goal ("launch a company selling a home robot that folds laundry"). A CEO agent breaks the goal into tasks. Two layers of multi-armed bandits decide **which specialist** does each task and **which model** it runs on, based on the task's kind and on what the task says. A reviewer agent scores every result, and your 👍/👎 overrides the reviewer. The bandits learn from those rewards, so the team gets better at routing work the more you use it.
 
 ## Architecture
 
@@ -141,7 +141,7 @@ Task: `{id, run_id, seq, round, title, description, kind, depends_on, status, ag
 
 ## Where data lives
 
-All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Suite of Agents/`:
+All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Avengers Assemble/`:
 
 | Path | Contents | Written by |
 |---|---|---|
@@ -153,7 +153,9 @@ All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Suite 
 | `feedback.jsonl` | Feedback-tab entries (local only) | App |
 | `venv/` | The engine's Python environment when launched from the app | uv |
 
-The API key lives only in the macOS Keychain (service "Suite of Agents"). It is passed to the engine as an environment variable and is never written to disk. The Python sandbox starts with an empty environment, so code the agents write can't read the key.
+The API key lives only in the macOS Keychain (service "Avengers Assemble"). It is passed to the engine as an environment variable and is never written to disk. The Python sandbox starts with an empty environment, so code the agents write can't read the key.
+
+**From the old name.** The project was called Suite of Agents until 2026-10-14. The first time the app or the `suite` command runs, it moves a `Suite of Agents` data folder to `Avengers Assemble` and deletes the Python environment inside, which holds absolute paths and is rebuilt on the next run; if both folders exist, nothing moves. A saved API key moves to the new Keychain entry when first read, and the app's uv and engine overrides carry over from the old bundle ID. Internal names keep the old one: the `suite` command, the `suite` Python package, `SUITE_HOME`, and the Swift package and targets (`SuiteOfAgents`, `SuiteCore`).
 
 ## Key design decisions and trade-offs
 

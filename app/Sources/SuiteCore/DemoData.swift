@@ -136,7 +136,7 @@ public enum DemoData {
 
     public static let runs: [RunSummary] = [
         RunSummary(id: runId, goal: goal, status: "done", createdAt: "2026-10-13T16:42:00Z", spentUsd: 1.57, taskCount: 10, mock: false,
-                   report: report, workspace: "/Users/demo/Library/Application Support/Suite of Agents/runs/\(runId)/workspace"),
+                   report: report, workspace: "/Users/demo/Library/Application Support/Avengers Assemble/runs/\(runId)/workspace"),
         RunSummary(id: "r_51ab90", goal: "Open a specialty coffee subscription for remote teams", status: "budget",
                    createdAt: "2026-10-12T16:10:00Z", spentUsd: 2.00, taskCount: 14),
         RunSummary(id: "r_2c71d4", goal: "Design a low-cost soil sensor for smallholder farms", status: "done",

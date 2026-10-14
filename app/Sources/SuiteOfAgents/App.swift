@@ -36,7 +36,7 @@ struct SuiteOfAgentsApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
-        Window("Suite of Agents", id: "main") {
+        Window(AppInfo.name, id: "main") {
             MainView()
                 .environment(model)
                 .frame(minWidth: 980, minHeight: 620)

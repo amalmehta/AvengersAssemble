@@ -1,7 +1,7 @@
 [project]
 name = "suite"
 version = "0.1.0"
-description = "Suite of Agents: a company of autonomous agents routed by multi-armed bandits"
+description = "Avengers Assemble: a company of autonomous agents routed by multi-armed bandits"
 requires-python = ">=3.11"
 dependencies = ["anthropic>=0.70", "pyyaml>=6", "pypdf>=5", "python-docx>=1.1", "openpyxl>=3.1", "python-pptx>=1.0"]
 

@@ -109,6 +109,12 @@ final class AppModel {
     init(demo: Bool = false) {
         isDemo = demo
         dataFolder = SuitePaths.dataFolder()
+        // Preferences saved under the app's old bundle ID carry over once.
+        if let legacy = UserDefaults(suiteName: AppInfo.legacyBundleID) {
+            for key in ["uvPathOverride", "engineDirOverride"] where UserDefaults.standard.object(forKey: key) == nil {
+                if let value = legacy.string(forKey: key) { UserDefaults.standard.set(value, forKey: key) }
+            }
+        }
         uvOverride = UserDefaults.standard.string(forKey: "uvPathOverride") ?? ""
         engineDirOverride = UserDefaults.standard.string(forKey: "engineDirOverride") ?? ""
         if demo {
@@ -384,7 +390,7 @@ final class AppModel {
 
     /// Writes pasted or dropped image data to a temp file so it can be passed as --input.
     func writeTempImage(_ data: Data, ext: String = "png") -> URL? {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("Suite of Agents", isDirectory: true)
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(AppInfo.name, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"

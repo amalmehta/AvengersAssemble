@@ -17,7 +17,7 @@
 ```
 
 ```bash
-open "build/Suite of Agents.app"
+open "build/Avengers Assemble.app"
 ```
 
 The first launch takes about 20 seconds while uv sets up the engine's Python environment in the data folder. During development you can skip the bundle: `cd app && swift run SuiteOfAgents`.
@@ -53,7 +53,7 @@ cd engine && uv run suite run "Start a drone delivery company for rural pharmaci
 | `suite agents` | The team, and where their YAML files live |
 | `suite bandit` | Routing posterior means, by kind and agent |
 
-`ANTHROPIC_API_KEY` must be set for real runs. `SUITE_HOME` changes the data folder (default `~/Library/Application Support/Suite of Agents/`).
+`ANTHROPIC_API_KEY` must be set for real runs. `SUITE_HOME` changes the data folder (default `~/Library/Application Support/Avengers Assemble/`).
 
 ## Test
 
@@ -70,7 +70,7 @@ Without `SUITE_ENGINE_DIR`, the three engine integration tests are skipped.
 ## Regenerate the README images
 
 ```bash
-"build/Suite of Agents.app/Contents/MacOS/SuiteOfAgents" --screenshots docs/images
+"build/Avengers Assemble.app/Contents/MacOS/SuiteOfAgents" --screenshots docs/images
 ```
 
 ```bash

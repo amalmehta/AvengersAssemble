@@ -1,4 +1,4 @@
-PROJECT NAME: SuiteOfAgents
+PROJECT NAME: AvengersAssemble
 
 META-INSTRUCTIONS:
 
@@ -67,7 +67,7 @@ Asked and answered (2026-10-13):
 - Powers: think, write files, web search, run Python in a sandbox. Nothing is sent, bought or published.
 - LLM: Claude API (Opus 5.5 / Sonnet 5.5 / Haiku 4.5) plus an offline mock; API key in the Keychain.
 - Roster: everyone from CONTEXT plus a Reviewer, as editable YAML.
-- GitHub: public repo SuiteOfAgents.
+- GitHub: public repo AvengersAssemble (created as SuiteOfAgents; renamed 2026-10-14).
 - Budget: per-run caps, default $2 and 40 tasks, adjustable in Settings.
 
 Decided without asking:
@@ -87,6 +87,7 @@ Decided without asking:
 CHANGELOG:
 
 - 2026-10-13 — created
+- 2026-10-14 — renamed to Avengers Assemble: app, data folder, Keychain entry, GitHub repo and this file (was SuiteOfAgents.md); existing data moves over automatically
 - 2026-10-13 — uploads made readable: images and PDFs opened natively by agents; HEIC/TIFF/BMP converted; Word, Excel and PowerPoint converted to text; planning digest of uploads
 - 2026-10-13 — routing on what a task says: wording-aware bandits, similar past tasks in "Why this agent", new "Task wording weight" setting
 - 2026-10-13 — independent tasks run in parallel (default 3 at once; new setting "Tasks at once" and `--parallel` flag)

@@ -246,7 +246,9 @@ final class StorageTests: XCTestCase {
 
     func testDataFolderAndOutputPaths() {
         XCTAssertEqual(SuitePaths.dataFolder(environment: ["SUITE_HOME": "/tmp/sh"]).path, "/tmp/sh")
-        XCTAssertTrue(SuitePaths.dataFolder(environment: [:]).path.hasSuffix("Application Support/Suite of Agents"))
+        // A temp Application Support folder, so the default path's one-time migration never touches real data.
+        let support = tmp.appendingPathComponent("Application Support")
+        XCTAssertEqual(SuitePaths.dataFolder(environment: [:], applicationSupport: support).lastPathComponent, "Avengers Assemble")
         let run = SuitePaths.runFolder(dataFolder: URL(fileURLWithPath: "/d"), runId: "r_1")
         XCTAssertEqual(SuitePaths.outputURL(outputPath: "workspace/tasks/01.md", runFolder: run).path, "/d/runs/r_1/workspace/tasks/01.md")
     }
@@ -269,5 +271,25 @@ final class StorageTests: XCTestCase {
         let first = try EngineLocator.resolveUV(override: nil, home: "/h", pathEnv: nil, isExecutable: { $0 == "/h/.local/bin/uv" || $0 == "/usr/local/bin/uv" })
         XCTAssertEqual(first.path, "/h/.local/bin/uv")
         XCTAssertThrowsError(try EngineLocator.resolveUV(override: "/nope/uv", home: "/h", pathEnv: nil, isExecutable: { _ in true && false }))
+    }
+
+    func testLegacyDataFolderMovesOnceAndDropsVenv() throws {
+        let support = tmp.appendingPathComponent("Application Support")
+        let legacy = support.appendingPathComponent("Suite of Agents")
+        try FileManager.default.createDirectory(at: legacy.appendingPathComponent("venv/bin"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: legacy.appendingPathComponent("agents"), withIntermediateDirectories: true)
+        try Data("db".utf8).write(to: legacy.appendingPathComponent("suite.db"))
+
+        let current = SuitePaths.migrateLegacyDataFolder(in: support)
+        XCTAssertEqual(current.lastPathComponent, "Avengers Assemble")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: current.appendingPathComponent("suite.db").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: current.appendingPathComponent("agents").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: current.appendingPathComponent("venv").path))
+
+        // With both present, nothing moves.
+        try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+        SuitePaths.migrateLegacyDataFolder(in: support)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.path))
     }
 }

@@ -1,1 +1,1 @@
-"""Suite of Agents engine."""
+"""Avengers Assemble engine."""

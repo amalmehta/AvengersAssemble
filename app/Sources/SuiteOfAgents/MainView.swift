@@ -27,7 +27,7 @@ struct MainView: View {
         } detail: {
             detailWithBanner
         }
-        .navigationTitle("Suite of Agents")
+        .navigationTitle(AppInfo.name)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
@@ -64,7 +64,7 @@ struct MainView: View {
             Divider()
             VStack(spacing: 0) {
                 HStack(spacing: 18) {
-                    Text("Suite of Agents").font(.title3.weight(.semibold))
+                    Text(AppInfo.name).font(.title3.weight(.semibold))
                     Spacer()
                     Image(systemName: "arrow.clockwise")
                     Image(systemName: "gearshape")
@@ -308,7 +308,7 @@ struct FeedbackButton: View {
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-        .help("Send feedback about Suite of Agents")
+        .help("Send feedback about \(AppInfo.name)")
         .popover(isPresented: $open, arrowEdge: .top) {
             VStack(alignment: .leading, spacing: 10) {
                 if thanks {

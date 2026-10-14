@@ -292,3 +292,17 @@ def test_concurrent_run_python_calls_do_not_collide(tmp_path):
         t.join()
     assert all(f"result-{n}" in outputs[n] for n in range(4))
     assert not list((ws.root / ".tmp").glob("*.py"))  # scripts cleaned up
+
+
+def test_legacy_data_folder_moves_once_and_drops_venv(tmp_path):
+    from suite.config import migrate_legacy_home
+    legacy = tmp_path / "Suite of Agents"
+    (legacy / "venv" / "bin").mkdir(parents=True)
+    (legacy / "agents").mkdir()
+    (legacy / "suite.db").write_text("db")
+    current = migrate_legacy_home(tmp_path)
+    assert current == tmp_path / "Avengers Assemble"
+    assert (current / "suite.db").read_text() == "db" and (current / "agents").is_dir()
+    assert not legacy.exists() and not (current / "venv").exists()
+    legacy.mkdir()  # both present: nothing moves
+    assert migrate_legacy_home(tmp_path) == current and legacy.exists()

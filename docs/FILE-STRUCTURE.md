@@ -1,16 +1,16 @@
 # File Structure
 
 ```
-SuiteOfAgents/
+AvengersAssemble/
 ├── README.md                    What it is, with pictures and links
-├── SuiteOfAgents.md             The project brief, decisions and changelog
+├── AvengersAssemble.md          The project brief, decisions and changelog
 ├── docs/
 │   ├── INSTRUCTIONS.md          Setup, run, use, test
 │   ├── SYSTEM-DESIGN.md         Architecture, flows, protocol, data, trade-offs, limits
 │   ├── FILE-STRUCTURE.md        This file
 │   └── images/                  App screenshots (light/dark) and the bandit learning chart
 ├── scripts/
-│   ├── build-app.sh             Builds "build/Suite of Agents.app" with the engine bundled inside
+│   ├── build-app.sh             Builds "build/Avengers Assemble.app" with the engine bundled inside
 │   └── bandit_chart.py          Simulates offline runs and draws the learning chart (wording vs kind-only routing)
 ├── engine/                      Python engine: the `suite` command
 │   ├── pyproject.toml, uv.lock
@@ -54,4 +54,4 @@ SuiteOfAgents/
     └── Tests/SuiteCoreTests/    Decoding, palette, settings, engine integration
 ```
 
-Data created at run time is not in the repo. It lives in `~/Library/Application Support/Suite of Agents/` (see [SYSTEM-DESIGN.md](SYSTEM-DESIGN.md#where-data-lives)).
+Data created at run time is not in the repo. It lives in `~/Library/Application Support/Avengers Assemble/` (see [SYSTEM-DESIGN.md](SYSTEM-DESIGN.md#where-data-lives)).

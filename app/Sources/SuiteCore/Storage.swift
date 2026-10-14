@@ -3,15 +3,39 @@ import Security
 
 // MARK: - Data folder
 
+public enum AppInfo {
+    public static let name = "Avengers Assemble"
+    /// What the app was called before, for moving data saved under the old name.
+    public static let legacyName = "Suite of Agents"
+    public static let legacyBundleID = "com.amalmehta.suiteofagents"
+}
+
 public enum SuitePaths {
-    /// `SUITE_HOME`, or ~/Library/Application Support/Suite of Agents/.
-    public static func dataFolder(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL {
+    /// `SUITE_HOME`, or ~/Library/Application Support/Avengers Assemble/.
+    public static func dataFolder(environment: [String: String] = ProcessInfo.processInfo.environment,
+                                  applicationSupport: URL? = nil) -> URL {
         if let home = environment["SUITE_HOME"], !home.isEmpty {
             return URL(fileURLWithPath: (home as NSString).expandingTildeInPath, isDirectory: true)
         }
-        let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        let support = applicationSupport
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return support.appendingPathComponent("Suite of Agents", isDirectory: true)
+        return migrateLegacyDataFolder(in: support)
+    }
+
+    /// Moves the data folder from its old name the first time, then returns the current one. The Python
+    /// environment inside is deleted, since it holds absolute paths; uv rebuilds it on the next run.
+    /// If both folders exist, nothing is moved.
+    @discardableResult
+    public static func migrateLegacyDataFolder(in support: URL) -> URL {
+        let fm = FileManager.default
+        let current = support.appendingPathComponent(AppInfo.name, isDirectory: true)
+        let legacy = support.appendingPathComponent(AppInfo.legacyName, isDirectory: true)
+        if !fm.fileExists(atPath: current.path), fm.fileExists(atPath: legacy.path),
+           (try? fm.moveItem(at: legacy, to: current)) != nil {
+            try? fm.removeItem(at: current.appendingPathComponent("venv", isDirectory: true))
+        }
+        return current
     }
 
     public static func runFolder(dataFolder: URL, runId: String) -> URL {
@@ -109,10 +133,18 @@ public enum FeedbackLog {
 // MARK: - Keychain
 
 public enum Keychain {
-    public static let service = "Suite of Agents"
+    public static let service = AppInfo.name
     public static let apiKeyAccount = "ANTHROPIC_API_KEY"
 
+    /// The saved key; one saved under the app's old name is moved to the current entry on first read.
     public static func read(account: String = apiKeyAccount) -> String? {
+        if let value = read(account: account, service: service) { return value }
+        guard let legacy = read(account: account, service: AppInfo.legacyName) else { return nil }
+        if save(legacy, account: account) { delete(account: account, service: AppInfo.legacyName) }
+        return legacy
+    }
+
+    private static func read(account: String, service: String) -> String? {
         let q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -139,14 +171,14 @@ public enum Keychain {
         if status == errSecItemNotFound {
             var add = base
             add[kSecValueData as String] = data
-            add[kSecAttrLabel as String] = "Suite of Agents — Anthropic API key"
+            add[kSecAttrLabel as String] = "\(AppInfo.name) — Anthropic API key"
             return SecItemAdd(add as CFDictionary, nil) == errSecSuccess
         }
         return false
     }
 
     @discardableResult
-    public static func delete(account: String = apiKeyAccount) -> Bool {
+    public static func delete(account: String = apiKeyAccount, service: String = Keychain.service) -> Bool {
         let q: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

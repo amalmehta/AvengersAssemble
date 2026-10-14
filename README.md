@@ -1,4 +1,4 @@
-# Suite of Agents
+# Avengers Assemble
 
 **A company made of AI agents: a CEO, a researcher, a marketer, product, software, hardware, robotics, AI, math and physics. Multi-armed bandits learn which agent, on which model, should do each task, from its kind and from what it says.**
 

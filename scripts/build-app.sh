@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Builds "build/Suite of Agents.app": release Swift build + bundled Python engine, ad-hoc signed.
+# Builds "build/Avengers Assemble.app": release Swift build + bundled Python engine, ad-hoc signed.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_NAME="Suite of Agents"
+APP_NAME="Avengers Assemble"
 APP="$ROOT/build/$APP_NAME.app"
 VERSION="${SUITE_VERSION:-1.0.0}"
 BUILD_NUMBER="${SUITE_BUILD:-1}"
@@ -25,7 +25,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundleDisplayName</key><string>$APP_NAME</string>
-    <key>CFBundleIdentifier</key><string>com.amalmehta.suiteofagents</string>
+    <key>CFBundleIdentifier</key><string>com.amalmehta.avengersassemble</string>
     <key>CFBundleExecutable</key><string>SuiteOfAgents</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>

@@ -77,6 +77,14 @@ Without `SUITE_ENGINE_DIR`, the three engine integration tests are skipped.
 uv run --project engine python scripts/bandit_chart.py
 ```
 
+## Change the app icon
+
+The icon is drawn in code, in `app/Sources/SuiteOfAgents/AppIcon.swift`. After editing it, regenerate `app/Resources/AppIcon.icns` and `docs/images/icon.png`, then rebuild the app:
+
+```bash
+./scripts/make-icon.sh
+```
+
 ## Costs
 
 Each run stops at its cost cap. With several tasks running at once, it can go over by up to one API call per running task. List prices per million tokens (input/output): Opus 5.5 $4/$20, Sonnet 5.5 $2/$10, Haiku 4.5 $1/$5. Web search is $10 per 1,000 searches. The CEO plans on Opus, the Reviewer scores on Sonnet, and specialists run on whichever model their variant bandit picks.

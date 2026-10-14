@@ -44,7 +44,7 @@ flowchart LR
 
 | Component | Where | Job |
 |---|---|---|
-| Mac app | `app/` | The UI. It starts and cancels runs, shows live progress, and records your ratings. It also browses past runs, the team and what the bandits have learned. Settings (⌘,), the feedback tab, and upload / drag-anywhere / ⌘V paste for input files live here too. It never calls the LLM itself. |
+| Mac app | `app/` | The UI. It starts and cancels runs, shows live progress, and records your ratings. It also browses past runs, the team and what the bandits have learned. Settings (⌘,), the feedback tab, and upload / drag-anywhere / ⌘V paste for input files live here too. Its icon is drawn in SwiftUI from the same kind palette. It never calls the LLM itself. |
 | CLI | `engine/src/suite/cli.py` | `suite run / runs / show / rate / agents / bandit / kinds`. Every command has `--json`, which is the app's only interface to the engine. |
 | Orchestrator | `engine/src/suite/orchestrator.py` | Runs one goal: plan → route → work → judge → review (up to 3 rounds) → report. Runs independent tasks in parallel worker threads, enforces the budget and the task cap, and handles cancellation. |
 | Bandits | `engine/src/suite/bandit.py` | Thompson sampling with Beta posteriors. The routing bandit has one arm per (kind, agent). Each agent has a variant bandit with one arm per (agent, model variant). Both are contextual: past results count toward a new task in proportion to how alike the wording is. |

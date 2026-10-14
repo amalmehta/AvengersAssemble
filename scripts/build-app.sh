@@ -27,6 +27,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key><string>$APP_NAME</string>
     <key>CFBundleIdentifier</key><string>com.amalmehta.avengersassemble</string>
     <key>CFBundleExecutable</key><string>SuiteOfAgents</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
@@ -39,6 +40,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+# The icon is drawn in code (app/Sources/SuiteOfAgents/AppIcon.swift); scripts/make-icon.sh regenerates it.
+cp "$ROOT/app/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 if [ -f "$ROOT/engine/pyproject.toml" ]; then
     echo "==> Bundling the engine"

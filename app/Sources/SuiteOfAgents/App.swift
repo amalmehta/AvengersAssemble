@@ -9,6 +9,9 @@ enum Entry {
         if let i = args.firstIndex(of: "--screenshots") {
             let dir = i + 1 < args.count ? args[i + 1] : "screenshots"
             ScreenshotRenderer.run(outputDirectory: URL(fileURLWithPath: dir, isDirectory: true))
+        } else if let i = args.firstIndex(of: "--render-icon") {
+            let dir = i + 1 < args.count ? args[i + 1] : "icon"
+            IconRenderer.run(outputDirectory: URL(fileURLWithPath: dir, isDirectory: true))
         } else {
             SuiteOfAgentsApp.main()
         }
@@ -21,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Needed when launched with `swift run` (no bundle): show in the Dock and come forward.
         NSApp.setActivationPolicy(.regular)
+        if Bundle.main.object(forInfoDictionaryKey: "CFBundleIconFile") == nil {
+            MainActor.assumeIsolated { NSApp.applicationIconImage = IconRenderer.dockImage() }
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 

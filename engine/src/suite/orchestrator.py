@@ -9,6 +9,7 @@ import threading
 from pathlib import Path
 from typing import Callable
 
+from . import inputs as uploads
 from .agents import load_agents
 from .bandit import Bandits
 from .config import JUDGE_VARIANT, KIND_IDS, KINDS, PLANNER_VARIANT, VARIANTS, home, load_settings
@@ -46,7 +47,8 @@ web_search (cite URLs), write_file / read_file / list_files on the shared worksp
 Rules:
 - Put your full deliverable in the workspace with write_file at tasks/{slug}.md (code or data can go in
   additional files; mention them in the deliverable).
-- Read inputs/ and other agents' tasks/ files when they are relevant.
+- Read inputs/ (the founder's uploads) and other agents' tasks/ files when they are relevant. read_file
+  shows uploaded images and PDFs as they are, and Word, Excel and PowerPoint files as text.
 - Be concrete and specific to this goal. State assumptions. Never invent sources or numbers.
 - When finished, reply with a 2–3 sentence summary of what you produced and the key conclusion.
 """
@@ -85,6 +87,7 @@ class Orchestrator:
         self.lock = threading.RLock()
         self.run_id = ""
         self.events_file = None
+        self.input_digest = "none"
 
     # --- plumbing -------------------------------------------------------------------
     def emit(self, event: dict) -> None:
@@ -145,6 +148,12 @@ class Orchestrator:
         self.events_file = open(run_dir / "events.jsonl", "a")
         self.emit({"type": "run_started", "run_id": self.run_id, "goal": goal, "mock": mock,
                    "max_cost_usd": self.settings["max_cost_usd"], "max_tasks": self.settings["max_tasks"]})
+        if inputs:
+            manifests = uploads.prepare_all(ws.root)
+            self.input_digest = uploads.digest(manifests)
+            self.emit({"type": "inputs", "files": [
+                {k: m.get(k) for k in ("name", "kind", "bytes", "pages", "width", "height", "error")}
+                for m in manifests]})
         status = "done"
         try:
             self.plan(goal, ws)
@@ -192,14 +201,15 @@ class Orchestrator:
 
     def plan(self, goal: str, ws: Workspace) -> None:
         ceo = self.agents["ceo"]
-        inputs = [f for f in ws.files() if f.startswith("inputs/")]
-        prompt = (f"Company goal: {goal}\n\nUploaded inputs: {inputs or 'none'}\n\nYour team:\n{self.team_text()}\n\n"
+        prompt = (f"Company goal: {goal}\n\nFiles the founder uploaded (agents can open them in full):\n"
+                  f"{self.input_digest}\n\nYour team:\n{self.team_text()}\n\n"
                   f"Task kinds: {', '.join(KIND_IDS)}\n\n"
                   "Break the goal into 4–10 concrete tasks, numbered 1..N in the order given. Each task needs "
                   "a short title, a description of the exact deliverable, the kind that best fits it, and "
                   "depends_on: the numbers of earlier tasks whose results it needs. Don't name who does it; "
                   "routing is decided separately.")
-        data, _ = self.call_json(PLANNER_VARIANT, ceo["system"], prompt, PLAN_SCHEMA, "plan", {"goal": goal})
+        data, _ = self.call_json(PLANNER_VARIANT, ceo["system"], prompt, PLAN_SCHEMA, "plan",
+                                 {"goal": goal, "inputs": self.input_digest})
         self.add_tasks(data.get("tasks", [])[:10], 1)
 
     def review(self, goal: str, next_round: int) -> bool:

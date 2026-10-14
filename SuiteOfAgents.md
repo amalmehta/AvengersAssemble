@@ -77,6 +77,7 @@ Decided without asking:
 - The CEO plans on Opus 5.5 and the Reviewer scores on Sonnet 5.5 (not bandit-routed). Up to 3 plan/review rounds.
 - Parallel tasks (added on request after v1): up to 3 independent tasks run at once by default ("Tasks at once" in Settings, `--parallel` on the CLI). Routing stays on one thread.
 - Routing on what a task says (added on request): local TF-IDF similarity, applied to both bandits as a kernel over past results (`text_weight` 0.5, "Task wording weight" in Settings). "Why this agent" lists the 3 most similar past tasks, and routing evidence is stored so past runs keep it. Measured in simulation: 50% vs 43% best-agent routing after 60 runs. Tried calibrating the cosine; no measurable gain, so not kept.
+- Uploads made readable (added on request): agents open images and PDFs natively, on demand, via read_file (image and document blocks in the tool result). PDFs over 20 pages come back as text, with page ranges to open natively. HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px. DOCX/XLSX/PPTX → Markdown. The CEO plans from a digest of every file. Parsing uploads is sandboxed: Python parsers in the strict workspace-only sandbox, image decoding only by Apple's sips (which also needs the per-user temp folder). New dependencies: pypdf, python-docx, openpyxl, python-pptx.
 - Opus/Sonnet requests use refusal fallbacks (`fallbacks: "default"`).
 - Python runs under macOS sandbox-exec: no network, writes only inside the run's workspace, 60 s limit.
 - The website is a later, separate step and was not built.
@@ -86,6 +87,7 @@ Decided without asking:
 CHANGELOG:
 
 - 2026-10-13 — created
+- 2026-10-13 — uploads made readable: images and PDFs opened natively by agents; HEIC/TIFF/BMP converted; Word, Excel and PowerPoint converted to text; planning digest of uploads
 - 2026-10-13 — routing on what a task says: wording-aware bandits, similar past tasks in "Why this agent", new "Task wording weight" setting
 - 2026-10-13 — independent tasks run in parallel (default 3 at once; new setting "Tasks at once" and `--parallel` flag)
 - 2026-10-13 — built v1: Mac app + Python engine, layered Thompson-sampling bandits, 10 agents + Reviewer, offline mock, docs, public GitHub repo

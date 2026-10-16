@@ -79,6 +79,7 @@ Decided without asking:
 - Routing on what a task says (added on request): local TF-IDF similarity, applied to both bandits as a kernel over past results (`text_weight` 0.5, "Task wording weight" in Settings). "Why this agent" lists the 3 most similar past tasks, and routing evidence is stored so past runs keep it. Measured in simulation: 50% vs 43% best-agent routing after 60 runs. Tried calibrating the cosine; no measurable gain, so not kept.
 - Uploads made readable (added on request): agents open images and PDFs natively, on demand, via read_file (image and document blocks in the tool result). PDFs over 20 pages come back as text, with page ranges to open natively. HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px. DOCX/XLSX/PPTX → Markdown. The CEO plans from a digest of every file. Parsing uploads is sandboxed: Python parsers in the strict workspace-only sandbox, image decoding only by Apple's sips (which also needs the per-user temp folder). New dependencies: pypdf, python-docx, openpyxl, python-pptx.
 - App icon (added on request): a central node (the CEO) joined to six agents in the three kind families' colours on a navy tile, deliberately unlike Marvel's logo. Drawn in SwiftUI on Apple's macOS icon grid, with simplified 16 and 32 px sizes; scripts/make-icon.sh renders the .icns.
+- Website (added on request): a static landing page on GitHub Pages (https://amalmehta.github.io/AvengersAssemble/) with a Download button for a universal .app attached to GitHub release v1.0.0. The app isn't notarized (that needs a paid Apple Developer account), so the site explains macOS's one-time Open Anyway step. It doesn't say "open source" because the repo has no license yet, and it states it's not affiliated with Marvel or Disney.
 - Opus/Sonnet requests use refusal fallbacks (`fallbacks: "default"`).
 - Python runs under macOS sandbox-exec: no network, writes only inside the run's workspace, 60 s limit.
 - The website is a later, separate step and was not built.
@@ -88,6 +89,7 @@ Decided without asking:
 CHANGELOG:
 
 - 2026-10-13 — created
+- 2026-10-14 — added the website (GitHub Pages landing page) and the v1.0.0 release with a universal Mac download
 - 2026-10-14 — added the app icon (team assembling around a central node)
 - 2026-10-14 — renamed to Avengers Assemble: app, data folder, Keychain entry, GitHub repo and this file (was SuiteOfAgents.md); existing data moves over automatically
 - 2026-10-13 — uploads made readable: images and PDFs opened natively by agents; HEIC/TIFF/BMP converted; Word, Excel and PowerPoint converted to text; planning digest of uploads

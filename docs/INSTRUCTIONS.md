@@ -10,6 +10,14 @@
 - Xcode or the Command Line Tools (Swift 5.9+), only to build the app
 - An Anthropic API key for real runs. Without one, everything runs on the offline mock: no API calls, no cost.
 
+## Download the Mac app
+
+Get it from the [website](https://amalmehta.github.io/AvengersAssemble/) or the latest [GitHub release](https://github.com/amalmehta/AvengersAssemble/releases/latest). It runs on Apple silicon and Intel Macs.
+
+1. Unzip it and move **Avengers Assemble** to Applications.
+2. The app isn't notarized by Apple, so macOS blocks it the first time you open it. Go to **System Settings → Privacy & Security** and click **Open Anyway**.
+3. You still need uv (see Requirements).
+
 ## Build and open the Mac app
 
 ```bash
@@ -75,6 +83,28 @@ Without `SUITE_ENGINE_DIR`, the three engine integration tests are skipped.
 
 ```bash
 uv run --project engine python scripts/bandit_chart.py
+```
+
+## Website and releases
+
+The website is `site/index.html`, a single page that uses the images in `docs/images`. GitHub Pages publishes it on every push to `main` that touches it (`.github/workflows/pages.yml`). To preview it locally:
+
+```bash
+./scripts/build-site.sh
+```
+
+```bash
+python3 -m http.server 8765 --directory build/site
+```
+
+To publish a new version of the app, build the universal zip and attach it to a release. The website's Download button always points at the latest release's `AvengersAssemble.zip`.
+
+```bash
+./scripts/package-release.sh
+```
+
+```bash
+gh release create v1.1.0 build/AvengersAssemble.zip --title "Avengers Assemble 1.1" --generate-notes
 ```
 
 ## Change the app icon

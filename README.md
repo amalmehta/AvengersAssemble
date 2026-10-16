@@ -60,6 +60,7 @@ flowchart LR
 
 ## Links
 
+- **[Website](https://amalmehta.github.io/AvengersAssemble/)**: what it is, and the Mac download
 - **[Instructions](docs/INSTRUCTIONS.md)**: set up, run and use it (Mac app and command line)
 - **[System design](docs/SYSTEM-DESIGN.md)**: architecture, bandit maths, protocol, data, trade-offs, limits
 - **[File structure](docs/FILE-STRUCTURE.md)**: what's where

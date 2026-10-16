@@ -10,8 +10,11 @@ BUILD_NUMBER="${SUITE_BUILD:-1}"
 
 echo "==> Building the Swift package (release)"
 cd "$ROOT/app"
-swift build -c release
-BIN_DIR="$(swift build -c release --show-bin-path)"
+# UNIVERSAL=1 builds for both Apple silicon and Intel (used for releases).
+ARCH_FLAGS=()
+if [ "${UNIVERSAL:-0}" = "1" ]; then ARCH_FLAGS=(--arch arm64 --arch x86_64); fi
+swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"}
+BIN_DIR="$(swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin-path)"
 
 echo "==> Assembling $APP"
 rm -rf "$APP"

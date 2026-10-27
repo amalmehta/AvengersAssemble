@@ -146,7 +146,7 @@ All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Avenge
 
 | Path | Contents | Written by |
 |---|---|---|
-| `settings.json` | `mock`, `max_cost_usd` (2), `max_tasks` (40), `user_rating_weight` (3), `cost_penalty_per_usd` (0.2), `max_agent_steps` (10), `max_parallel_tasks` (3), `text_weight` (0.5) | App Settings |
+| `settings.json` | `mock` (on until the first key is saved), `max_cost_usd` (2), `max_tasks` (40), `user_rating_weight` (3), `cost_penalty_per_usd` (0.2), `max_agent_steps` (10), `max_parallel_tasks` (3), `text_weight` (0.5) | App Settings |
 | `agents/*.yaml` | The editable roster, seeded from the defaults on first use | You |
 | `suite.db` | Runs and tasks (the reward log) | Engine |
 | `runs/<id>/workspace/` | `inputs/` (your uploads, with model-ready copies in `inputs/.prepared/`) and `tasks/` (deliverables), plus any code or data the agents made | Agents |
@@ -186,7 +186,7 @@ The API key lives only in the macOS Keychain (service "Avengers Assemble"). It i
 
 ## Known limits
 
-- The live Claude path has been tested only against a fake transport. No API key was available during the build, so the first real run is the first live test. Start with a low budget.
+- The live Claude path has had one real run (2026-10-27, $0.53 against a $0.50 cap): Opus planning, Sonnet and Haiku agents, web search, sandboxed Python, file tools, reviewer scores, the budget stop and the report all worked. It showed that web search can hit its per-request limit early, and that a task stopped at the budget cap shows $0 on its own row (its spend is still in the run total).
 - With several tasks in flight, a run can overshoot its cost cap by up to one API call per running task.
 - Task similarity is lexical (TF-IDF). Paraphrases with no shared words don't match, and very short task descriptions give weak signals.
 - Wording-aware routing pays off only after many runs, and its gain in simulation is moderate (43% → 50% best-agent routing). The mock's variant rewards don't depend on wording, so the variant side is covered by unit tests, not simulation.

@@ -83,11 +83,12 @@ Decided without asking:
 - Opus/Sonnet requests use refusal fallbacks (`fallbacks: "default"`).
 - Python runs under macOS sandbox-exec: no network, writes only inside the run's workspace, 60 s limit.
 - The website is a later, separate step and was not built.
-- Not yet tested against the live API (no key available during the build); covered by a fake-transport test instead.
+- First live API run on 2026-10-27 ($0.53, capped at $0.50): worked end to end. Saving the first key now turns mock mode off; before, mock stayed on and runs silently used the mock.
 
 
 CHANGELOG:
 
+- 2026-10-27 — first live API run; saving the first API key now switches mock mode off
 - 2026-10-13 — created
 - 2026-10-14 — added the website (GitHub Pages landing page) and the v1.0.0 release with a universal Mac download
 - 2026-10-14 — added the app icon (team assembling around a central node)

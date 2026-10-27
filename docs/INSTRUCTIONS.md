@@ -32,7 +32,7 @@ The first launch takes about 20 seconds while uv sets up the engine's Python env
 
 ## Use it
 
-1. **Settings (⌘,).** Paste your Anthropic API key. It's stored in the macOS Keychain. Set the cost cap per run (default $2), the task cap (default 40), and **Tasks at once** (default 3; independent tasks run side by side). With no key, or with **Use offline mock** on, runs use the mock.
+1. **Settings (⌘,).** Paste your Anthropic API key. It's stored in the macOS Keychain. Set the cost cap per run (default $2), the task cap (default 40), and **Tasks at once** (default 3; independent tasks run side by side). With no key, or with **Use offline mock** on, runs use the mock. Mock is on until you save your first key; saving it switches mock off.
 2. **New Run.** Type a goal, e.g. "Launch a company selling a home robot that folds laundry". Give the team files with **Upload…**, by dropping them anywhere on the window, or by pasting with ⌘V. Press **Start**.
    - Agents see **images** (PNG, JPEG, GIF, WebP, HEIC, TIFF, BMP) and **PDFs** as they are: pictures, tables and figures, not just text. A PDF over 20 pages is read 20 pages at a time.
    - **Word, Excel and PowerPoint** files are converted to text and tables. Other text files are read as they are.

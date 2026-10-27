@@ -448,8 +448,14 @@ final class AppModel {
     func saveAPIKey(_ key: String) -> Bool {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isDemo else { return false }
+        let hadKey = hasAPIKey
         let ok = Keychain.save(trimmed)
         hasAPIKey = Keychain.read() != nil
+        // Mock is on by default; adding the first key means the user wants real runs.
+        if ok && !hadKey && settings.mock {
+            settings.mock = false
+            saveSettings()
+        }
         return ok
     }
 

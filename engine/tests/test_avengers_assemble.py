@@ -144,7 +144,7 @@ def test_mock_bandit_learns_over_runs(home):
         # One task at a time keeps the mock's random stream in a fixed order, so this stays deterministic.
         Orchestrator(MockProvider(seed=i), lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1},
                      avengers_home=home, rng=random.Random(i)).run("Launch a company selling a home robot that folds laundry")
-    store = Store(home / "suite.db")
+    store = Store(home / "avengers_assemble.db")
     late = [t for t in store.scored_tasks() if t["run_id"] in [r["id"] for r in store.runs()[:2]]]
     early = [t for t in store.scored_tasks() if t["run_id"] in [r["id"] for r in store.runs()[-2:]]]
     avg = lambda ts: sum(t["judge_score"] for t in ts) / len(ts)
@@ -306,3 +306,15 @@ def test_legacy_data_folder_moves_once_and_drops_venv(tmp_path):
     assert not legacy.exists() and not (current / "venv").exists()
     legacy.mkdir()  # both present: nothing moves
     assert migrate_legacy_home(tmp_path) == current and legacy.exists()
+
+
+def test_legacy_database_is_renamed_once_with_its_side_files(tmp_path):
+    from avengers_assemble.config import db_path
+    (tmp_path / "suite.db").write_text("db")
+    (tmp_path / "suite.db-wal").write_text("wal")
+    current = db_path(tmp_path)
+    assert current == tmp_path / "avengers_assemble.db" and current.read_text() == "db"
+    assert (tmp_path / "avengers_assemble.db-wal").read_text() == "wal"
+    assert not (tmp_path / "suite.db").exists() and not (tmp_path / "suite.db-wal").exists()
+    (tmp_path / "suite.db").write_text("old")  # both present: nothing moves
+    assert db_path(tmp_path).read_text() == "db" and (tmp_path / "suite.db").exists()

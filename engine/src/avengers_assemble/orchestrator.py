@@ -12,7 +12,7 @@ from typing import Callable
 from . import inputs as uploads
 from .agents import load_agents
 from .bandit import Bandits
-from .config import JUDGE_VARIANT, KIND_IDS, KINDS, PLANNER_VARIANT, VARIANTS, home, load_settings
+from .config import JUDGE_VARIANT, KIND_IDS, KINDS, PLANNER_VARIANT, VARIANTS, db_path, home, load_settings
 from .providers import Provider, ProviderError, Reply
 from .similarity import task_text
 from .store import Store
@@ -74,7 +74,7 @@ class Orchestrator:
         self.home.mkdir(parents=True, exist_ok=True)
         self.provider = provider
         self.settings = settings or load_settings()
-        self.store = store or Store(self.home / "suite.db")
+        self.store = store or Store(db_path(self.home))
         self.agents = {a["id"]: a for a in load_agents(self.home)}
         self.emit_cb = emit
         self.rng = rng

@@ -10,11 +10,11 @@ public enum AppInfo {
     public static let legacyBundleID = "com.amalmehta.suiteofagents"
 }
 
-public enum SuitePaths {
-    /// `SUITE_HOME`, or ~/Library/Application Support/Avengers Assemble/.
+public enum AvengersPaths {
+    /// `AVENGERS_HOME`, or ~/Library/Application Support/Avengers Assemble/.
     public static func dataFolder(environment: [String: String] = ProcessInfo.processInfo.environment,
                                   applicationSupport: URL? = nil) -> URL {
-        if let home = environment["SUITE_HOME"], !home.isEmpty {
+        if let home = environment["AVENGERS_HOME"], !home.isEmpty {
             return URL(fileURLWithPath: (home as NSString).expandingTildeInPath, isDirectory: true)
         }
         let support = applicationSupport

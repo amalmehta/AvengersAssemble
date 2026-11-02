@@ -9,8 +9,8 @@ inputs/.prepared/ folder (the original stays as uploaded):
 
 Uploads are untrusted, so all parsing happens under sandbox-exec, with no network and a time limit:
   - PDFs and Office files are parsed in a Python child process that may write only inside the workspace:
-        python -m suite.inputs prepare <file> <prepared_dir>
-        python -m suite.inputs slice <pdf> <first> <last> <out.pdf>
+        python -m avengers_assemble.inputs prepare <file> <prepared_dir>
+        python -m avengers_assemble.inputs slice <pdf> <first> <last> <out.pdf>
   - Images are decoded only by Apple's sips, which also needs the per-user temp folder; the engine runs
     it directly under that slightly wider profile, so no Python code parses uploads there.
 """
@@ -237,7 +237,7 @@ def _user_temp_dir() -> str:
 
 
 def run_sandboxed(root: Path, *args: str) -> subprocess.CompletedProcess:
-    cmd = [sys.executable, "-m", "suite.inputs", *args]
+    cmd = [sys.executable, "-m", "avengers_assemble.inputs", *args]
     if shutil.which("sandbox-exec"):
         cmd = ["sandbox-exec", "-p", _sandbox_profile(root), *cmd]
     env = {"PATH": "/usr/bin:/bin", "HOME": str(root), "PYTHONPATH": os.pathsep.join(sys.path)}
@@ -308,7 +308,7 @@ def main(argv: list[str]) -> int:
     if argv[:1] == ["slice"] and len(argv) == 5:
         slice_pdf(Path(argv[1]), int(argv[2]), int(argv[3]), Path(argv[4]))
         return 0
-    print("usage: python -m suite.inputs prepare <file> <dir> | slice <pdf> <first> <last> <out>", file=sys.stderr)
+    print("usage: python -m avengers_assemble.inputs prepare <file> <dir> | slice <pdf> <first> <last> <out>", file=sys.stderr)
     return 2
 
 

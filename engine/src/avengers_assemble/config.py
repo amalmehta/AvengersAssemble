@@ -61,7 +61,7 @@ LEGACY_APP_NAME = "Suite of Agents"  # the data folder's name before the rename
 
 
 def home() -> Path:
-    env = os.environ.get("SUITE_HOME")
+    env = os.environ.get("AVENGERS_HOME")
     path = Path(env) if env else migrate_legacy_home(Path.home() / "Library" / "Application Support")
     path.mkdir(parents=True, exist_ok=True)
     return path

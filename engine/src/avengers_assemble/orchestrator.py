@@ -69,8 +69,8 @@ def slugify(text: str, seq: int) -> str:
 
 class Orchestrator:
     def __init__(self, provider: Provider, emit: Callable[[dict], None], store: Store | None = None,
-                 settings: dict | None = None, suite_home: Path | None = None, rng=None, skill_priors: bool = True):
-        self.home = suite_home or home()
+                 settings: dict | None = None, avengers_home: Path | None = None, rng=None, skill_priors: bool = True):
+        self.home = avengers_home or home()
         self.home.mkdir(parents=True, exist_ok=True)
         self.provider = provider
         self.settings = settings or load_settings()

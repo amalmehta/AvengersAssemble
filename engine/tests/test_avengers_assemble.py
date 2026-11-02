@@ -8,13 +8,13 @@ import time
 
 import pytest
 
-from suite.bandit import Bandits, task_reward
-from suite.cli import main
-from suite.config import DEFAULT_SETTINGS, KIND_IDS
-from suite.orchestrator import Orchestrator
-from suite.providers import MockProvider, ProviderError, _drop_pre_fallback
-from suite.store import Store
-from suite.tools import ToolError, Workspace
+from avengers_assemble.bandit import Bandits, task_reward
+from avengers_assemble.cli import main
+from avengers_assemble.config import DEFAULT_SETTINGS, KIND_IDS
+from avengers_assemble.orchestrator import Orchestrator
+from avengers_assemble.providers import MockProvider, ProviderError, _drop_pre_fallback
+from avengers_assemble.store import Store
+from avengers_assemble.tools import ToolError, Workspace
 
 AGENTS = [
     {"id": "a", "skills": ["math"], "variants": ["opus-high", "haiku"], "routable": True},
@@ -25,7 +25,7 @@ AGENTS = [
 
 @pytest.fixture
 def home(tmp_path, monkeypatch):
-    monkeypatch.setenv("SUITE_HOME", str(tmp_path))
+    monkeypatch.setenv("AVENGERS_HOME", str(tmp_path))
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     return tmp_path
 
@@ -103,7 +103,7 @@ def test_mock_run_end_to_end(home, tmp_path):
     events = []
     brief = tmp_path / "brief.txt"
     brief.write_text("We have $2M.")
-    orch = Orchestrator(MockProvider(seed=3), events.append, settings=dict(DEFAULT_SETTINGS), suite_home=home,
+    orch = Orchestrator(MockProvider(seed=3), events.append, settings=dict(DEFAULT_SETTINGS), avengers_home=home,
                         rng=random.Random(3))
     run_id = orch.run("Launch a company selling a home robot that folds laundry", [brief])
     types = [e["type"] for e in events]
@@ -122,7 +122,7 @@ def test_mock_run_end_to_end(home, tmp_path):
 def test_budget_cap_stops_run_and_still_writes_report(home):
     events = []
     settings = {**DEFAULT_SETTINGS, "max_cost_usd": 0.01}
-    orch = Orchestrator(MockProvider(seed=1), events.append, settings=settings, suite_home=home)
+    orch = Orchestrator(MockProvider(seed=1), events.append, settings=settings, avengers_home=home)
     run_id = orch.run("Start a software company")
     assert events[-1]["status"] == "budget"
     assert any(t["status"] == "skipped" for t in orch.store.tasks(run_id))
@@ -132,7 +132,7 @@ def test_budget_cap_stops_run_and_still_writes_report(home):
 def test_task_cap(home):
     events = []
     settings = {**DEFAULT_SETTINGS, "max_tasks": 2}
-    orch = Orchestrator(MockProvider(seed=1), events.append, settings=settings, suite_home=home)
+    orch = Orchestrator(MockProvider(seed=1), events.append, settings=settings, avengers_home=home)
     run_id = orch.run("Start a software company")
     assert sum(t["status"] == "done" for t in orch.store.tasks(run_id)) == 2
     assert events[-1]["status"] == "budget"
@@ -143,7 +143,7 @@ def test_mock_bandit_learns_over_runs(home):
     for i in range(6):
         # One task at a time keeps the mock's random stream in a fixed order, so this stays deterministic.
         Orchestrator(MockProvider(seed=i), lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1},
-                     suite_home=home, rng=random.Random(i)).run("Launch a company selling a home robot that folds laundry")
+                     avengers_home=home, rng=random.Random(i)).run("Launch a company selling a home robot that folds laundry")
     store = Store(home / "suite.db")
     late = [t for t in store.scored_tasks() if t["run_id"] in [r["id"] for r in store.runs()[:2]]]
     early = [t for t in store.scored_tasks() if t["run_id"] in [r["id"] for r in store.runs()[-2:]]]
@@ -178,11 +178,11 @@ def test_cli_json_commands(home, capsys):
 
 def test_sigterm_cancels_run(home, tmp_path):
     proc = subprocess.Popen([sys.executable, "-c",
-                             "import time, suite.providers as p\n"
+                             "import time, avengers_assemble.providers as p\n"
                              "orig = p.MockProvider.create\n"
                              "def slow(*a, **k):\n    time.sleep(0.5); return orig(*a, **k)\n"
                              "p.MockProvider.create = slow\n"
-                             "from suite.cli import main; main(['run','Build an app','--mock','--json'])"],
+                             "from avengers_assemble.cli import main; main(['run','Build an app','--mock','--json'])"],
                             stdout=subprocess.PIPE, text=True)
     time.sleep(2.5)
     proc.send_signal(signal.SIGTERM)
@@ -218,7 +218,7 @@ class SlowMock(MockProvider):
 def run_with(home, parallel, provider=None, **settings):
     events = []
     provider = provider or SlowMock(seed=1)
-    orch = Orchestrator(provider, events.append, suite_home=home, rng=random.Random(1),
+    orch = Orchestrator(provider, events.append, avengers_home=home, rng=random.Random(1),
                         settings={**DEFAULT_SETTINGS, "max_parallel_tasks": parallel, **settings})
     run_id = orch.run("Launch a company selling a home robot that folds laundry")
     return orch, run_id, events, provider
@@ -295,7 +295,7 @@ def test_concurrent_run_python_calls_do_not_collide(tmp_path):
 
 
 def test_legacy_data_folder_moves_once_and_drops_venv(tmp_path):
-    from suite.config import migrate_legacy_home
+    from avengers_assemble.config import migrate_legacy_home
     legacy = tmp_path / "Suite of Agents"
     (legacy / "venv" / "bin").mkdir(parents=True)
     (legacy / "agents").mkdir()

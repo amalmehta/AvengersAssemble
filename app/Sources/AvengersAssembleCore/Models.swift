@@ -155,7 +155,7 @@ public struct RoutingEvidence: Hashable, Sendable {
     }
 }
 
-public struct SuiteTask: Decodable, Identifiable, Hashable, Sendable {
+public struct AvengersTask: Decodable, Identifiable, Hashable, Sendable {
     public var id: String
     public var runId: String?
     public var seq: Int
@@ -255,19 +255,19 @@ public struct RunSummary: Decodable, Identifiable, Hashable, Sendable {
         workspace = c.string("workspace")
     }
 
-    public var createdDate: Date? { SuiteDates.parse(createdAt) }
+    public var createdDate: Date? { AvengersDates.parse(createdAt) }
 }
 
 public struct RunDetail: Decodable, Sendable {
     public var run: RunSummary
-    public var tasks: [SuiteTask]
+    public var tasks: [AvengersTask]
 
-    public init(run: RunSummary, tasks: [SuiteTask]) { self.run = run; self.tasks = tasks }
+    public init(run: RunSummary, tasks: [AvengersTask]) { self.run = run; self.tasks = tasks }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: AnyKey.self)
         run = try c.decode(RunSummary.self, forKey: AnyKey("run"))
-        tasks = (try? c.decodeIfPresent([SuiteTask].self, forKey: AnyKey("tasks"))) ?? []
+        tasks = (try? c.decodeIfPresent([AvengersTask].self, forKey: AnyKey("tasks"))) ?? []
     }
 }
 
@@ -286,7 +286,7 @@ public enum RunStatusName {
     }
 }
 
-public enum SuiteDates {
+public enum AvengersDates {
     public static func parse(_ raw: String?) -> Date? {
         guard let raw, !raw.isEmpty else { return nil }
         if let seconds = Double(raw) { return Date(timeIntervalSince1970: seconds) }

@@ -1,4 +1,4 @@
-"""The `suite` command line. The Mac app drives the engine through these commands."""
+"""The `avengers-assemble` command line. The Mac app drives the engine through these commands."""
 from __future__ import annotations
 
 import argparse
@@ -167,7 +167,7 @@ def cmd_kinds(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="suite", description="Avengers Assemble: a company of agents routed by bandits.")
+    p = argparse.ArgumentParser(prog="avengers-assemble", description="Avengers Assemble: a company of agents routed by bandits.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="Run a goal with the whole team")

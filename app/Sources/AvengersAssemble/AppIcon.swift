@@ -1,5 +1,5 @@
 import AppKit
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 /// The app icon: a team assembling. A central node (the CEO) is joined to a ring of agents in the app's

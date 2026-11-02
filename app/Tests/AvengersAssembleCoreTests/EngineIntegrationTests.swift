@@ -1,16 +1,16 @@
 import AppKit
 import Foundation
 import XCTest
-@testable import SuiteCore
+@testable import AvengersAssembleCore
 
-/// Runs against the real engine. Skipped unless SUITE_ENGINE_DIR points at it, e.g.
-/// SUITE_ENGINE_DIR=../engine swift test --filter EngineIntegrationTests
+/// Runs against the real engine. Skipped unless AVENGERS_ENGINE_DIR points at it, e.g.
+/// AVENGERS_ENGINE_DIR=../engine swift test --filter EngineIntegrationTests
 final class EngineIntegrationTests: XCTestCase {
     private func runner() throws -> (EngineRunner, URL) {
-        guard let dir = ProcessInfo.processInfo.environment["SUITE_ENGINE_DIR"], !dir.isEmpty else {
-            throw XCTSkip("Set SUITE_ENGINE_DIR to run engine integration tests")
+        guard let dir = ProcessInfo.processInfo.environment["AVENGERS_ENGINE_DIR"], !dir.isEmpty else {
+            throw XCTSkip("Set AVENGERS_ENGINE_DIR to run engine integration tests")
         }
-        let home = FileManager.default.temporaryDirectory.appendingPathComponent("suite-it-\(UUID().uuidString)")
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("avengers-assemble-it-\(UUID().uuidString)")
         return (EngineRunner(config: .init(engineDirOverride: dir, dataFolder: home)), home)
     }
 

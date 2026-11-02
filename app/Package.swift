@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "SuiteOfAgents",
+    name: "AvengersAssemble",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "SuiteOfAgents", targets: ["SuiteOfAgents"]),
-        .library(name: "SuiteCore", targets: ["SuiteCore"]),
+        .executable(name: "AvengersAssemble", targets: ["AvengersAssemble"]),
+        .library(name: "AvengersAssembleCore", targets: ["AvengersAssembleCore"]),
     ],
     targets: [
-        .target(name: "SuiteCore"),
-        .executableTarget(name: "SuiteOfAgents", dependencies: ["SuiteCore"]),
-        .testTarget(name: "SuiteCoreTests", dependencies: ["SuiteCore"]),
+        .target(name: "AvengersAssembleCore"),
+        .executableTarget(name: "AvengersAssemble", dependencies: ["AvengersAssembleCore"]),
+        .testTarget(name: "AvengersAssembleCoreTests", dependencies: ["AvengersAssembleCore"]),
     ]
 )

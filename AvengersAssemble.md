@@ -88,6 +88,7 @@ Decided without asking:
 
 CHANGELOG:
 
+- 2026-11-02 — renamed the internals too: Swift targets, Python package, `avengers-assemble` command, `AVENGERS_*` env vars and the database file (`suite.db` moves over automatically)
 - 2026-10-27 — first live API run; saving the first API key now switches mock mode off
 - 2026-10-13 — created
 - 2026-10-14 — added the website (GitHub Pages landing page) and the v1.0.0 release with a universal Mac download

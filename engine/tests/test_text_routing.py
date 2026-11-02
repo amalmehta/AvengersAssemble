@@ -4,13 +4,13 @@ import sqlite3
 
 import pytest
 
-from suite.bandit import Bandits
-from suite.cli import main
-from suite.config import DEFAULT_SETTINGS
-from suite.orchestrator import Orchestrator
-from suite.providers import MockProvider
-from suite.similarity import Similarity, tokens
-from suite.store import Store
+from avengers_assemble.bandit import Bandits
+from avengers_assemble.cli import main
+from avengers_assemble.config import DEFAULT_SETTINGS
+from avengers_assemble.orchestrator import Orchestrator
+from avengers_assemble.providers import MockProvider
+from avengers_assemble.similarity import Similarity, tokens
+from avengers_assemble.store import Store
 
 AGENTS = [
     {"id": "hw", "skills": ["hardware"], "variants": ["opus-high", "haiku"], "routable": True},
@@ -95,7 +95,7 @@ def test_similar_lists_closest_past_tasks():
 
 
 def test_old_database_gains_routing_column(tmp_path):
-    db = sqlite3.connect(tmp_path / "suite.db")
+    db = sqlite3.connect(tmp_path / "avengers_assemble.db")
     db.execute("CREATE TABLE tasks (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, seq INTEGER NOT NULL, "
                "round INTEGER NOT NULL DEFAULT 1, title TEXT NOT NULL, description TEXT NOT NULL, kind TEXT NOT NULL, "
                "depends_on TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'pending', agent TEXT, variant TEXT, "
@@ -104,16 +104,16 @@ def test_old_database_gains_routing_column(tmp_path):
     db.execute("INSERT INTO tasks (id, run_id, seq, title, description, kind) VALUES ('t1','r1',1,'a','b','math')")
     db.commit()
     db.close()
-    task = Store(tmp_path / "suite.db").task("t1")
+    task = Store(tmp_path / "avengers_assemble.db").task("t1")
     assert task["routing"] is None and task["title"] == "a"
 
 
 def test_runs_record_routing_evidence(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("SUITE_HOME", str(tmp_path))
+    monkeypatch.setenv("AVENGERS_HOME", str(tmp_path))
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     for i in range(2):  # the second run has history to match against
         events = []
-        orch = Orchestrator(MockProvider(seed=i), events.append, suite_home=tmp_path, rng=random.Random(i),
+        orch = Orchestrator(MockProvider(seed=i), events.append, avengers_home=tmp_path, rng=random.Random(i),
                             settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1})
         run_id = orch.run("Launch a company selling a home robot that folds laundry")
     assigned = [e for e in events if e["type"] == "task_assigned"]

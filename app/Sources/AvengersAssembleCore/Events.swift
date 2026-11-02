@@ -1,9 +1,9 @@
 import Foundation
 
-/// One event from `suite run --json` (one JSON object per line).
+/// One event from `avengers-assemble run --json` (one JSON object per line).
 public enum RunEvent: Sendable, Equatable {
     case runStarted(runId: String, goal: String, mock: Bool, maxCostUsd: Double?, maxTasks: Int?)
-    case plan(round: Int, tasks: [SuiteTask])
+    case plan(round: Int, tasks: [AvengersTask])
     case taskAssigned(taskId: String, kind: String?, agent: String, variant: String, samples: [String: Double],
                       similar: [SimilarTask])
     case toolCall(taskId: String, tool: String, summary: String)
@@ -39,11 +39,11 @@ public enum RunEventDecoder {
                                mock: bool(o["mock"]) ?? false,
                                maxCostUsd: dbl(o["max_cost_usd"]), maxTasks: int(o["max_tasks"]))
         case "plan":
-            var tasks: [SuiteTask] = []
+            var tasks: [AvengersTask] = []
             if let arr = o["tasks"] as? [Any] {
                 for item in arr {
                     guard let d = try? JSONSerialization.data(withJSONObject: item),
-                          let t = try? JSONDecoder().decode(SuiteTask.self, from: d) else { continue }
+                          let t = try? JSONDecoder().decode(AvengersTask.self, from: d) else { continue }
                     tasks.append(t)
                 }
             }

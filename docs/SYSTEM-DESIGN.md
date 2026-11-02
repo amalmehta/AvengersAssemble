@@ -12,7 +12,7 @@ flowchart LR
         Feedback[Feedback tab]
         Keychain[(Keychain: API key)]
     end
-    subgraph Engine["Python engine: suite CLI"]
+    subgraph Engine["Python engine: avengers-assemble CLI"]
         Orch[Orchestrator]
         Bandits[Routing bandit<br/>+ variant bandits]
         Agents[Agents<br/>YAML roster]
@@ -20,13 +20,13 @@ flowchart LR
         Prov[Provider:<br/>Claude API or offline mock]
     end
     subgraph Data["Data folder"]
-        DB[(suite.db<br/>runs · tasks · rewards)]
+        DB[(avengers_assemble.db<br/>runs · tasks · rewards)]
         Runs[runs/&lt;id&gt;/<br/>workspace · report.md · events.jsonl]
         Cfg[settings.json · agents/*.yaml]
     end
     Claude[(Claude API<br/>Opus 5.5 · Sonnet 5.5 · Haiku 4.5<br/>+ web search)]
 
-    UI -- "spawns suite run --json<br/>reads JSON lines" --> Orch
+    UI -- "spawns avengers-assemble run --json<br/>reads JSON lines" --> Orch
     Settings -- writes --> Cfg
     Keychain -- "ANTHROPIC_API_KEY env" --> Orch
     Orch --> Bandits
@@ -45,20 +45,20 @@ flowchart LR
 | Component | Where | Job |
 |---|---|---|
 | Mac app | `app/` | The UI. It starts and cancels runs, shows live progress, and records your ratings. It also browses past runs, the team and what the bandits have learned. Settings (⌘,), the feedback tab, and upload / drag-anywhere / ⌘V paste for input files live here too. Its icon is drawn in SwiftUI from the same kind palette. It never calls the LLM itself. |
-| CLI | `engine/src/suite/cli.py` | `suite run / runs / show / rate / agents / bandit / kinds`. Every command has `--json`, which is the app's only interface to the engine. |
-| Orchestrator | `engine/src/suite/orchestrator.py` | Runs one goal: plan → route → work → judge → review (up to 3 rounds) → report. Runs independent tasks in parallel worker threads, enforces the budget and the task cap, and handles cancellation. |
-| Bandits | `engine/src/suite/bandit.py` | Thompson sampling with Beta posteriors. The routing bandit has one arm per (kind, agent). Each agent has a variant bandit with one arm per (agent, model variant). Both are contextual: past results count toward a new task in proportion to how alike the wording is. |
-| Similarity | `engine/src/suite/similarity.py` | TF-IDF vectors over task titles and descriptions, and their cosine similarity. Pure Python, computed locally. |
-| Agents | `engine/src/suite/agents/*.yaml` → `<data>/agents/` | Name, role, skills (task kinds, primary skill first), allowed variants, and system prompt. Ten routable specialists plus the non-routable Reviewer. Edit them or add a file to add an agent. |
-| Tools | `engine/src/suite/tools.py` | `write_file`, `read_file`, `list_files` confined to the run's workspace, and `run_python` under macOS `sandbox-exec`. `read_file` on an upload returns images and PDFs as native image and document blocks, and Office files as text. Web search is Anthropic's server-side tool. |
-| Inputs | `engine/src/suite/inputs.py` | Prepares uploads once per run, sandboxed: HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px; PDF page counts and text; DOCX/XLSX/PPTX → Markdown. Writes the CEO's planning digest. |
-| Providers | `engine/src/suite/providers.py` | `AnthropicProvider` (Messages API with tools, structured outputs, effort and refusal fallbacks) and `MockProvider` (deterministic offline stand-in with the same interface). |
-| Store | `engine/src/suite/store.py` | SQLite: `runs` and `tasks`. A task row holds its routing choice, judge score, your rating and cost, so it is also the reward log. |
+| CLI | `engine/src/avengers_assemble/cli.py` | `avengers-assemble run / runs / show / rate / agents / bandit / kinds`. Every command has `--json`, which is the app's only interface to the engine. |
+| Orchestrator | `engine/src/avengers_assemble/orchestrator.py` | Runs one goal: plan → route → work → judge → review (up to 3 rounds) → report. Runs independent tasks in parallel worker threads, enforces the budget and the task cap, and handles cancellation. |
+| Bandits | `engine/src/avengers_assemble/bandit.py` | Thompson sampling with Beta posteriors. The routing bandit has one arm per (kind, agent). Each agent has a variant bandit with one arm per (agent, model variant). Both are contextual: past results count toward a new task in proportion to how alike the wording is. |
+| Similarity | `engine/src/avengers_assemble/similarity.py` | TF-IDF vectors over task titles and descriptions, and their cosine similarity. Pure Python, computed locally. |
+| Agents | `engine/src/avengers_assemble/agents/*.yaml` → `<data>/agents/` | Name, role, skills (task kinds, primary skill first), allowed variants, and system prompt. Ten routable specialists plus the non-routable Reviewer. Edit them or add a file to add an agent. |
+| Tools | `engine/src/avengers_assemble/tools.py` | `write_file`, `read_file`, `list_files` confined to the run's workspace, and `run_python` under macOS `sandbox-exec`. `read_file` on an upload returns images and PDFs as native image and document blocks, and Office files as text. Web search is Anthropic's server-side tool. |
+| Inputs | `engine/src/avengers_assemble/inputs.py` | Prepares uploads once per run, sandboxed: HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px; PDF page counts and text; DOCX/XLSX/PPTX → Markdown. Writes the CEO's planning digest. |
+| Providers | `engine/src/avengers_assemble/providers.py` | `AnthropicProvider` (Messages API with tools, structured outputs, effort and refusal fallbacks) and `MockProvider` (deterministic offline stand-in with the same interface). |
+| Store | `engine/src/avengers_assemble/store.py` | SQLite: `runs` and `tasks`. A task row holds its routing choice, judge score, your rating and cost, so it is also the reward log. |
 | Website | `site/index.html` | A static landing page on GitHub Pages (https://amalmehta.github.io/AvengersAssemble/), built by `scripts/build-site.sh` and published by `.github/workflows/pages.yml`. Its Download button points at the latest GitHub release's `AvengersAssemble.zip` (a universal, ad-hoc-signed, not notarized app). |
 
 ## Main flows
 
-**A run.** `suite run "<goal>" [--input file…]`
+**A run.** `avengers-assemble run "<goal>" [--input file…]`
 1. Uploaded files are copied to `runs/<id>/workspace/inputs/` and **prepared** (see "Uploads" below). The CEO gets a digest of them: name, type, size, pages or dimensions, and an excerpt.
 2. **Plan.** The CEO (Opus 5.5, structured JSON output) returns 4–10 tasks, each with a kind (one of 10) and dependencies.
 3. Every task whose dependencies have all finished is ready. Up to `max_parallel_tasks` (default 3) ready tasks run at once. For each one:
@@ -88,7 +88,7 @@ Every step emits a JSON-line event. The app renders them live, and they are also
 
 Prepared copies live in `inputs/.prepared/`, hidden from `list_files`; the original stays as uploaded. A file that can't be parsed is reported in the digest and as a `read_file` error; the run continues.
 
-**Rating.** `suite rate <task> up|down|clear` stores `user_rating` (1/0/null). Posteriors are rebuilt from the task table on every routing decision, so a rating takes effect on the next task, even mid-run.
+**Rating.** `avengers-assemble rate <task> up|down|clear` stores `user_rating` (1/0/null). Posteriors are rebuilt from the task table on every routing decision, so a rating takes effect on the next task, even mid-run.
 
 **Learning maths.** For a task with reward *r* ∈ [0,1] and weight *w*, the arm gets α += w·r and β += w·(1−r). If you rated the task, *r* is your rating and *w* is `user_rating_weight` (default 3). Otherwise *r* is the judge's score and *w* is 1. The variant arm is paid *r* − `cost_penalty_per_usd` × task cost, so a cheap model that is nearly as good wins over time.
 
@@ -113,7 +113,7 @@ Wording only helps once there is history to match against: the two lines track e
 
 ## Engine ↔ app protocol
 
-The app finds `uv` and runs `uv run --project <engine> suite <command> --json`, with `UV_PROJECT_ENVIRONMENT=<data>/venv` (so no venv is written inside the app bundle) and `ANTHROPIC_API_KEY` from the Keychain.
+The app finds `uv` and runs `uv run --project <engine> avengers-assemble <command> --json`, with `UV_PROJECT_ENVIRONMENT=<data>/venv` (so no venv is written inside the app bundle) and `ANTHROPIC_API_KEY` from the Keychain.
 
 | Command | Output |
 |---|---|
@@ -142,13 +142,13 @@ Task: `{id, run_id, seq, round, title, description, kind, depends_on, status, ag
 
 ## Where data lives
 
-All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Avengers Assemble/`:
+All data lives in `AVENGERS_HOME`, by default `~/Library/Application Support/Avengers Assemble/`:
 
 | Path | Contents | Written by |
 |---|---|---|
 | `settings.json` | `mock` (on until the first key is saved), `max_cost_usd` (2), `max_tasks` (40), `user_rating_weight` (3), `cost_penalty_per_usd` (0.2), `max_agent_steps` (10), `max_parallel_tasks` (3), `text_weight` (0.5) | App Settings |
 | `agents/*.yaml` | The editable roster, seeded from the defaults on first use | You |
-| `suite.db` | Runs and tasks (the reward log) | Engine |
+| `avengers_assemble.db` | Runs and tasks (the reward log) | Engine |
 | `runs/<id>/workspace/` | `inputs/` (your uploads, with model-ready copies in `inputs/.prepared/`) and `tasks/` (deliverables), plus any code or data the agents made | Agents |
 | `runs/<id>/report.md`, `events.jsonl` | The final report and the full event log | Engine |
 | `feedback.jsonl` | Feedback-tab entries (local only) | App |
@@ -156,11 +156,11 @@ All data lives in `SUITE_HOME`, by default `~/Library/Application Support/Avenge
 
 The API key lives only in the macOS Keychain (service "Avengers Assemble"). It is passed to the engine as an environment variable and is never written to disk. The Python sandbox starts with an empty environment, so code the agents write can't read the key.
 
-**From the old name.** The project was called Suite of Agents until 2026-10-14. The first time the app or the `suite` command runs, it moves a `Suite of Agents` data folder to `Avengers Assemble` and deletes the Python environment inside, which holds absolute paths and is rebuilt on the next run; if both folders exist, nothing moves. A saved API key moves to the new Keychain entry when first read, and the app's uv and engine overrides carry over from the old bundle ID. Internal names keep the old one: the `suite` command, the `suite` Python package, `SUITE_HOME`, and the Swift package and targets (`SuiteOfAgents`, `SuiteCore`).
+**From the old name.** The project was called Suite of Agents until 2026-10-14. The first time the app or the `avengers-assemble` command runs, it moves a `Suite of Agents` data folder to `Avengers Assemble` and deletes the Python environment inside, which holds absolute paths and is rebuilt on the next run; if both folders exist, nothing moves. The engine then renames `suite.db` to `avengers_assemble.db` the same way. A saved API key moves to the new Keychain entry when first read, and the app's uv and engine overrides carry over from the old bundle ID. Internal names changed on 2026-11-02: the `suite` command and Python package are now `avengers-assemble` and `avengers_assemble`, the Swift targets are `AvengersAssemble` and `AvengersAssembleCore`, and `SUITE_HOME` and `SUITE_ENGINE_DIR` are now `AVENGERS_HOME` and `AVENGERS_ENGINE_DIR`, with no fallback to the old variables.
 
 ## Key design decisions and trade-offs
 
-- **Two processes (Swift UI + Python engine) over one Swift app.** Python has the official Anthropic SDK and is easy to script, test and run headless (`suite run …` works without the app). The cost is a `uv` dependency and a JSON protocol to keep in sync.
+- **Two processes (Swift UI + Python engine) over one Swift app.** Python has the official Anthropic SDK and is easy to script, test and run headless (`avengers-assemble run …` works without the app). The cost is a `uv` dependency and a JSON protocol to keep in sync.
 - **Thompson sampling over UCB or ε-greedy.** It handles fractional rewards and informative priors naturally, explores in proportion to uncertainty, and has no tuning constant. Contextual variants like LinUCB need far more data than one person's runs; a kernel over past results keeps the same Beta posteriors, priors and explanations.
 - **Posteriors recomputed from the task table** rather than stored as counters. Ratings and edits to priors apply retroactively, and nothing can drift out of sync. The cost is O(tasks) per decision, which is trivial at this scale.
 - **Kinds plus wording as the routing context.** Ten fixed kinds keep the arm count manageable (10 × 10 routing arms), give the app a stable colour scheme, and carry the skill priors. Task wording refines that through the similarity kernel.
@@ -182,7 +182,7 @@ The API key lives only in the macOS Keychain (service "Avengers Assemble"). It i
 - **Parallel execution.** Overlap reaches the limit and dependencies are respected (no task starts before its dependencies finish). Parallel runs are faster than sequential ones, and a limit of 1 never overlaps. The task cap counts dispatched tasks. The budget cap and worker errors drain tasks in flight with none left `running`. Concurrent `run_python` calls don't collide.
 - **Text routing.** Tokenizing and cosine. `text_weight` 0 is exactly kind-only. Similar wording carries evidence across kinds, and none transfers without shared words. Wording splits one kind between two agents where kind-only can't. The variant bandit learns per wording (Opus for proofs, Haiku for summaries). The closest past tasks are listed in order. Old databases gain the `routing` column. Runs store their routing evidence and `show` returns it.
 - **CLI.** Every `--json` command, plus SIGTERM → `canceled` (with parallel tasks in flight).
-- **App.** `cd app && swift test` covers event and routing-evidence decoding, a streamed run with a pasted image (agents receive it as an image), settings, and the colour palette (families share a hue range; siblings are distinguishable). With `SUITE_ENGINE_DIR` set, it also checks that real `show` output carries routing evidence.
+- **App.** `cd app && swift test` covers event and routing-evidence decoding, a streamed run with a pasted image (agents receive it as an image), settings, and the colour palette (families share a hue range; siblings are distinguishable). With `AVENGERS_ENGINE_DIR` set, it also checks that real `show` output carries routing evidence.
 
 ## Known limits
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates the app icon from its SwiftUI drawing (app/Sources/SuiteOfAgents/AppIcon.swift):
+# Regenerates the app icon from its SwiftUI drawing (app/Sources/AvengersAssemble/AppIcon.swift):
 # every macOS size → app/Resources/AppIcon.icns, plus docs/images/icon.png for the README.
 set -euo pipefail
 
@@ -10,7 +10,7 @@ trap 'rm -rf "$WORK"' EXIT
 echo "==> Building the app"
 cd "$ROOT/app"
 swift build -c release
-"$(swift build -c release --show-bin-path)/SuiteOfAgents" --render-icon "$WORK"
+"$(swift build -c release --show-bin-path)/AvengersAssemble" --render-icon "$WORK"
 
 echo "==> Packing AppIcon.icns"
 mkdir -p "$ROOT/app/Resources"

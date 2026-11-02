@@ -5,9 +5,9 @@ import random
 import httpx2 as httpx
 import anthropic
 
-from suite.config import DEFAULT_SETTINGS, VARIANTS
-from suite.orchestrator import Orchestrator
-from suite.providers import AnthropicProvider
+from avengers_assemble.config import DEFAULT_SETTINGS, VARIANTS
+from avengers_assemble.orchestrator import Orchestrator
+from avengers_assemble.providers import AnthropicProvider
 
 
 def message(content, stop="end_turn", model="claude-opus-5-5"):
@@ -63,7 +63,7 @@ def test_structured_output_request():
 
 def test_full_run_through_fake_api(tmp_path, monkeypatch):
     """A whole run against scripted API replies: plan → tool loop → judge → review → report."""
-    monkeypatch.setenv("SUITE_HOME", str(tmp_path))
+    monkeypatch.setenv("AVENGERS_HOME", str(tmp_path))
     sent = []
 
     def responder(body):
@@ -90,7 +90,7 @@ def test_full_run_through_fake_api(tmp_path, monkeypatch):
 
     p = provider_with(responder, sent)
     events = []
-    orch = Orchestrator(p, events.append, settings=dict(DEFAULT_SETTINGS), suite_home=tmp_path, rng=random.Random(0))
+    orch = Orchestrator(p, events.append, settings=dict(DEFAULT_SETTINGS), avengers_home=tmp_path, rng=random.Random(0))
     run_id = orch.run("Sell robots")
     assert events[-1]["status"] == "done"
     task = orch.store.tasks(run_id)[0]
@@ -105,7 +105,7 @@ def test_uploads_reach_the_api_as_native_blocks(tmp_path, monkeypatch):
     _sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
     from test_inputs import make_pdf
 
-    monkeypatch.setenv("SUITE_HOME", str(tmp_path))
+    monkeypatch.setenv("AVENGERS_HOME", str(tmp_path))
     brief = tmp_path / "brief.pdf"
     make_pdf(brief, ["Laundry robot market brief"])
     sent = []
@@ -129,7 +129,7 @@ def test_uploads_reach_the_api_as_native_blocks(tmp_path, monkeypatch):
         return message([{"type": "text", "text": "# Report"}])
 
     p = provider_with(responder, sent)
-    Orchestrator(p, lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1}, suite_home=tmp_path,
+    Orchestrator(p, lambda e: None, settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1}, avengers_home=tmp_path,
                  rng=random.Random(0)).run("Sell robots", [brief])
     plan_prompt = sent[0]["body"]["messages"][0]["content"]
     assert "inputs/brief.pdf (PDF, 1 page" in plan_prompt and "Laundry robot market brief" in plan_prompt

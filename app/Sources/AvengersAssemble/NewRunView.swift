@@ -1,5 +1,5 @@
 import AppKit
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 /// Plain-text editor that does NOT accept dropped files, so file drops fall through to the

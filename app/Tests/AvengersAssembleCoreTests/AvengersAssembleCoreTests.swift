@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import SuiteCore
+@testable import AvengersAssembleCore
 
 final class EventDecodingTests: XCTestCase {
     func testRunStarted() {
@@ -39,11 +39,11 @@ final class EventDecodingTests: XCTestCase {
 
     func testTaskDecodesStoredRoutingEvidence() throws {
         let json = #"{"id":"t_1","seq":1,"title":"A","kind":"math","routing":{"samples":{"math":0.81,"physics":0.4},"similar":[{"task_id":"t_0","title":"B","agent":"math","reward":1,"similarity":0.5}]}}"#
-        let task = try JSONDecoder().decode(SuiteTask.self, from: Data(json.utf8))
+        let task = try JSONDecoder().decode(AvengersTask.self, from: Data(json.utf8))
         XCTAssertEqual(task.routing?.samples, ["math": 0.81, "physics": 0.4])
         XCTAssertEqual(task.routing?.similar.first?.taskId, "t_0")
         XCTAssertEqual(task.routing?.similar.first?.reward, 1)
-        let old = try JSONDecoder().decode(SuiteTask.self, from: Data(#"{"id":"t_1","seq":1,"title":"A","kind":"math","routing":null}"#.utf8))
+        let old = try JSONDecoder().decode(AvengersTask.self, from: Data(#"{"id":"t_1","seq":1,"title":"A","kind":"math","routing":null}"#.utf8))
         XCTAssertNil(old.routing)
     }
 
@@ -206,7 +206,7 @@ final class StorageTests: XCTestCase {
     private var tmp: URL!
 
     override func setUp() {
-        tmp = FileManager.default.temporaryDirectory.appendingPathComponent("suite-tests-\(UUID().uuidString)")
+        tmp = FileManager.default.temporaryDirectory.appendingPathComponent("avengers-assemble-tests-\(UUID().uuidString)")
     }
 
     override func tearDown() { try? FileManager.default.removeItem(at: tmp) }
@@ -245,21 +245,21 @@ final class StorageTests: XCTestCase {
     }
 
     func testDataFolderAndOutputPaths() {
-        XCTAssertEqual(SuitePaths.dataFolder(environment: ["SUITE_HOME": "/tmp/sh"]).path, "/tmp/sh")
+        XCTAssertEqual(AvengersPaths.dataFolder(environment: ["AVENGERS_HOME": "/tmp/sh"]).path, "/tmp/sh")
         // A temp Application Support folder, so the default path's one-time migration never touches real data.
         let support = tmp.appendingPathComponent("Application Support")
-        XCTAssertEqual(SuitePaths.dataFolder(environment: [:], applicationSupport: support).lastPathComponent, "Avengers Assemble")
-        let run = SuitePaths.runFolder(dataFolder: URL(fileURLWithPath: "/d"), runId: "r_1")
-        XCTAssertEqual(SuitePaths.outputURL(outputPath: "workspace/tasks/01.md", runFolder: run).path, "/d/runs/r_1/workspace/tasks/01.md")
+        XCTAssertEqual(AvengersPaths.dataFolder(environment: [:], applicationSupport: support).lastPathComponent, "Avengers Assemble")
+        let run = AvengersPaths.runFolder(dataFolder: URL(fileURLWithPath: "/d"), runId: "r_1")
+        XCTAssertEqual(AvengersPaths.outputURL(outputPath: "workspace/tasks/01.md", runFolder: run).path, "/d/runs/r_1/workspace/tasks/01.md")
     }
 
     func testEngineDirResolutionOrder() throws {
         let existing: Set<String> = ["/override/pyproject.toml", "/env/pyproject.toml", "/App.app/Contents/Resources/engine/pyproject.toml", "/repo/engine/pyproject.toml"]
         let exists: (String) -> Bool = { existing.contains($0) }
         let res = URL(fileURLWithPath: "/App.app/Contents/Resources")
-        let exe = URL(fileURLWithPath: "/repo/app/.build/debug/SuiteOfAgents")
-        XCTAssertEqual(try EngineLocator.resolveEngineDir(override: "/override", environment: ["SUITE_ENGINE_DIR": "/env"], bundleResources: res, executable: exe, fileExists: exists).path, "/override")
-        XCTAssertEqual(try EngineLocator.resolveEngineDir(override: "", environment: ["SUITE_ENGINE_DIR": "/env"], bundleResources: res, executable: exe, fileExists: exists).path, "/env")
+        let exe = URL(fileURLWithPath: "/repo/app/.build/debug/AvengersAssemble")
+        XCTAssertEqual(try EngineLocator.resolveEngineDir(override: "/override", environment: ["AVENGERS_ENGINE_DIR": "/env"], bundleResources: res, executable: exe, fileExists: exists).path, "/override")
+        XCTAssertEqual(try EngineLocator.resolveEngineDir(override: "", environment: ["AVENGERS_ENGINE_DIR": "/env"], bundleResources: res, executable: exe, fileExists: exists).path, "/env")
         XCTAssertEqual(try EngineLocator.resolveEngineDir(override: nil, environment: [:], bundleResources: res, executable: exe, fileExists: exists).path, "/App.app/Contents/Resources/engine")
         XCTAssertEqual(try EngineLocator.resolveEngineDir(override: nil, environment: [:], bundleResources: nil, executable: exe, fileExists: exists).path, "/repo/engine")
         XCTAssertThrowsError(try EngineLocator.resolveEngineDir(override: nil, environment: [:], bundleResources: nil, executable: URL(fileURLWithPath: "/x/y"), fileExists: exists))
@@ -280,7 +280,7 @@ final class StorageTests: XCTestCase {
         try FileManager.default.createDirectory(at: legacy.appendingPathComponent("agents"), withIntermediateDirectories: true)
         try Data("db".utf8).write(to: legacy.appendingPathComponent("suite.db"))
 
-        let current = SuitePaths.migrateLegacyDataFolder(in: support)
+        let current = AvengersPaths.migrateLegacyDataFolder(in: support)
         XCTAssertEqual(current.lastPathComponent, "Avengers Assemble")
         XCTAssertFalse(FileManager.default.fileExists(atPath: legacy.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: current.appendingPathComponent("suite.db").path))
@@ -289,7 +289,7 @@ final class StorageTests: XCTestCase {
 
         // With both present, nothing moves.
         try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
-        SuitePaths.migrateLegacyDataFolder(in: support)
+        AvengersPaths.migrateLegacyDataFolder(in: support)
         XCTAssertTrue(FileManager.default.fileExists(atPath: legacy.path))
     }
 }

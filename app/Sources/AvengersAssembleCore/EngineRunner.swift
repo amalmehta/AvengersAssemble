@@ -59,7 +59,7 @@ public enum EngineLocator {
         throw EngineError.uvNotFound(searched: candidates)
     }
 
-    /// Settings override → SUITE_ENGINE_DIR → bundle Resources/engine → walk up from the executable.
+    /// Settings override → AVENGERS_ENGINE_DIR → bundle Resources/engine → walk up from the executable.
     public static func resolveEngineDir(override: String?, environment: [String: String],
                                         bundleResources: URL?, executable: URL?,
                                         fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) throws -> URL {
@@ -71,10 +71,10 @@ public enum EngineLocator {
             if ok(dir) { return dir }
             searched.append(dir.path + " (from Settings)")
         }
-        if let e = environment["SUITE_ENGINE_DIR"], !e.isEmpty {
+        if let e = environment["AVENGERS_ENGINE_DIR"], !e.isEmpty {
             let dir = URL(fileURLWithPath: (e as NSString).expandingTildeInPath, isDirectory: true)
             if ok(dir) { return dir }
-            searched.append(dir.path + " (SUITE_ENGINE_DIR)")
+            searched.append(dir.path + " (AVENGERS_ENGINE_DIR)")
         }
         if let res = bundleResources {
             let dir = res.appendingPathComponent("engine", isDirectory: true)
@@ -96,7 +96,7 @@ public enum EngineLocator {
     }
 }
 
-/// Runs the `suite` CLI through `uv run --project <engine> suite ...`.
+/// Runs the `avengers-assemble` CLI through `uv run --project <engine> avengers-assemble ...`.
 public final class EngineRunner: @unchecked Sendable {
     public struct Config: Sendable {
         public var uvOverride: String?
@@ -133,12 +133,12 @@ public final class EngineRunner: @unchecked Sendable {
                                            executable: Bundle.main.executableURL)
     }
 
-    /// Executable, arguments and environment for `suite <args>`.
+    /// Executable, arguments and environment for `avengers-assemble <args>`.
     public func command(_ args: [String]) throws -> (URL, [String], [String: String]) {
         let uv = try EngineLocator.resolveUV(override: config.uvOverride)
         let engine = try engineDir()
         var env = ProcessInfo.processInfo.environment
-        env["SUITE_HOME"] = config.dataFolder.path
+        env["AVENGERS_HOME"] = config.dataFolder.path
         env["UV_PROJECT_ENVIRONMENT"] = config.dataFolder.appendingPathComponent("venv").path
         env["PYTHONUNBUFFERED"] = "1"
         env["UV_NO_PROGRESS"] = "1"
@@ -154,13 +154,13 @@ public final class EngineRunner: @unchecked Sendable {
             env["UV_FROZEN"] = "1"
         }
         try? FileManager.default.createDirectory(at: config.dataFolder, withIntermediateDirectories: true)
-        return (uv, ["run", "--project", engine.path, "suite"] + args, env)
+        return (uv, ["run", "--project", engine.path, "avengers-assemble"] + args, env)
     }
 
     /// Runs a one-shot command and returns its stdout. Throws with stderr on non-zero exit.
     public func runOnce(_ args: [String]) async throws -> Data {
         let (exe, fullArgs, env) = try command(args)
-        let label = "suite " + args.filter { $0 != "--json" }.joined(separator: " ")
+        let label = "avengers-assemble " + args.filter { $0 != "--json" }.joined(separator: " ")
         return try await withCheckedThrowingContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
                 let p = Process()
@@ -203,13 +203,13 @@ public final class EngineRunner: @unchecked Sendable {
         do {
             return try JSONOutput.decode(T.self, from: data)
         } catch {
-            let label = "suite " + args.filter { $0 != "--json" }.joined(separator: " ")
+            let label = "avengers-assemble " + args.filter { $0 != "--json" }.joined(separator: " ")
             throw EngineError.decodeFailed(command: label, detail: String(describing: error),
                                            output: String(data: data, encoding: .utf8) ?? "")
         }
     }
 
-    /// Starts a streaming command (`suite run ... --json`). Events arrive on a background queue.
+    /// Starts a streaming command (`avengers-assemble run ... --json`). Events arrive on a background queue.
     public func startStreaming(_ args: [String],
                                onEvent: @escaping @Sendable (RunEvent) -> Void,
                                onExit: @escaping @Sendable (_ status: Int32, _ stderr: String) -> Void) throws -> RunningProcess {
@@ -224,7 +224,7 @@ public final class EngineRunner: @unchecked Sendable {
         p.standardError = err
         p.standardInput = FileHandle.nullDevice
 
-        let queue = DispatchQueue(label: "suite.run.stream")
+        let queue = DispatchQueue(label: "avengers-assemble.run.stream")
         let group = DispatchGroup()
         let state = StreamState()
 

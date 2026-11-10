@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_NAME="Avengers Assemble"
 APP="$ROOT/build/$APP_NAME.app"
-VERSION="${SUITE_VERSION:-1.0.0}"
-BUILD_NUMBER="${SUITE_BUILD:-1}"
+VERSION="${AVENGERS_VERSION:-1.0.0}"
+BUILD_NUMBER="${AVENGERS_BUILD:-1}"
 
 echo "==> Building the Swift package (release)"
 cd "$ROOT/app"
@@ -19,7 +19,7 @@ BIN_DIR="$(swift build -c release ${ARCH_FLAGS[@]+"${ARCH_FLAGS[@]}"} --show-bin
 echo "==> Assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/SuiteOfAgents" "$APP/Contents/MacOS/SuiteOfAgents"
+cp "$BIN_DIR/AvengersAssemble" "$APP/Contents/MacOS/AvengersAssemble"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -29,7 +29,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleName</key><string>$APP_NAME</string>
     <key>CFBundleDisplayName</key><string>$APP_NAME</string>
     <key>CFBundleIdentifier</key><string>com.amalmehta.avengersassemble</string>
-    <key>CFBundleExecutable</key><string>SuiteOfAgents</string>
+    <key>CFBundleExecutable</key><string>AvengersAssemble</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
@@ -44,7 +44,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# The icon is drawn in code (app/Sources/SuiteOfAgents/AppIcon.swift); scripts/make-icon.sh regenerates it.
+# The icon is drawn in code (app/Sources/AvengersAssemble/AppIcon.swift); scripts/make-icon.sh regenerates it.
 cp "$ROOT/app/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
 if [ -f "$ROOT/engine/pyproject.toml" ]; then

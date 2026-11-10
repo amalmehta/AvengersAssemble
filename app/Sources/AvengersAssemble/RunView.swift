@@ -1,4 +1,4 @@
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 struct RunView: View {
@@ -100,7 +100,7 @@ struct TaskListView: View {
 
 struct TaskRow: View {
     @Environment(AppModel.self) private var model
-    var task: SuiteTask
+    var task: AvengersTask
     var state: RunState
 
     var body: some View {
@@ -136,7 +136,7 @@ struct TaskRow: View {
 
 struct RatingButtons: View {
     @Environment(AppModel.self) private var model
-    var task: SuiteTask
+    var task: AvengersTask
     var state: RunState
 
     var body: some View {
@@ -196,7 +196,7 @@ struct InspectorView: View {
 
 struct TaskDetail: View {
     @Environment(AppModel.self) private var model
-    var task: SuiteTask
+    var task: AvengersTask
     var state: RunState
 
     var body: some View {
@@ -256,8 +256,8 @@ struct TaskDetail: View {
                 HStack {
                     if let path = task.outputPath, !path.isEmpty {
                         Button {
-                            let folder = state.runFolder ?? SuitePaths.runFolder(dataFolder: model.dataFolder, runId: state.id)
-                            model.reveal(SuitePaths.outputURL(outputPath: path, runFolder: folder))
+                            let folder = state.runFolder ?? AvengersPaths.runFolder(dataFolder: model.dataFolder, runId: state.id)
+                            model.reveal(AvengersPaths.outputURL(outputPath: path, runFolder: folder))
                         } label: {
                             Label("Open Output", systemImage: "folder")
                         }

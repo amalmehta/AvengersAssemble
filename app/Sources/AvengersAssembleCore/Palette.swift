@@ -143,7 +143,7 @@ public enum KindPalette {
     /// A dynamic NSColor that switches between the tuned light and dark values.
     public static func nsColor(for kind: String, family: KindFamily? = nil) -> NSColor {
         let s = swatch(for: kind, family: family)
-        return NSColor(name: NSColor.Name("SuiteKind.\(kind)")) { appearance in
+        return NSColor(name: NSColor.Name("AvengersKind.\(kind)")) { appearance in
             let isDark = appearance.bestMatch(from: [.darkAqua, .aqua, .vibrantDark, .vibrantLight]) == .darkAqua
                 || appearance.bestMatch(from: [.darkAqua, .aqua, .vibrantDark, .vibrantLight]) == .vibrantDark
             let c = isDark ? s.dark : s.light

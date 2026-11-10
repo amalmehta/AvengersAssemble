@@ -16,10 +16,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from suite.config import DEFAULT_SETTINGS
-from suite.orchestrator import Orchestrator
-from suite.providers import MockProvider, best_agent
-from suite.similarity import task_text
+from avengers_assemble.config import DEFAULT_SETTINGS
+from avengers_assemble.orchestrator import Orchestrator
+from avengers_assemble.providers import MockProvider, best_agent
+from avengers_assemble.similarity import task_text
 
 GOALS = [
     "Launch a company selling a home robot that folds laundry",
@@ -51,7 +51,7 @@ def simulate(job) -> list[float]:
     share = []
     for i in range(RUNS):
         # One task at a time keeps each simulation deterministic.
-        orch = Orchestrator(MockProvider(seed=1000 * rep + i), lambda e: None, suite_home=home,
+        orch = Orchestrator(MockProvider(seed=1000 * rep + i), lambda e: None, avengers_home=home,
                             settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1, "text_weight": text_weight},
                             rng=random.Random(7919 * rep + i), skill_priors=skill_priors)
         run_id = orch.run(GOALS[i % len(GOALS)])

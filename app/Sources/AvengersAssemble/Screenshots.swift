@@ -1,5 +1,5 @@
 import AppKit
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 /// `--screenshots <dir>`: renders the main views with demo data, offscreen, in light and dark,

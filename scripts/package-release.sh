@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UNIVERSAL=1 "$ROOT/scripts/build-app.sh"
 APP="$ROOT/build/Avengers Assemble.app"
-lipo -info "$APP/Contents/MacOS/SuiteOfAgents"
+lipo -info "$APP/Contents/MacOS/AvengersAssemble"
 rm -f "$ROOT/build/AvengersAssemble.zip"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ROOT/build/AvengersAssemble.zip"
 echo "Packaged $ROOT/build/AvengersAssemble.zip ($(du -h "$ROOT/build/AvengersAssemble.zip" | cut -f1))"

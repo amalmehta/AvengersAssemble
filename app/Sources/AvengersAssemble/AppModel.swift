@@ -1,6 +1,6 @@
 import AppKit
 import Observation
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 enum SidebarItem: Hashable {
@@ -22,7 +22,7 @@ struct ActivityNote: Identifiable, Equatable {
     var text: String
 }
 
-/// Everything shown for one run, live or loaded from `suite show`.
+/// Everything shown for one run, live or loaded from `avengers-assemble show`.
 @Observable
 final class RunState: Identifiable {
     var id: String
@@ -31,7 +31,7 @@ final class RunState: Identifiable {
     var isLive: Bool
     var mock: Bool
     var createdAt: Date?
-    var tasks: [SuiteTask] = []
+    var tasks: [AvengersTask] = []
     var spentUsd: Double = 0
     var maxCostUsd: Double
     var tasksDone: Int = 0
@@ -71,7 +71,7 @@ final class RunState: Identifiable {
         if let ws = detail.run.workspace, !ws.isEmpty {
             runFolder = URL(fileURLWithPath: ws).deletingLastPathComponent()
         } else {
-            runFolder = SuitePaths.runFolder(dataFolder: dataFolder, runId: id)
+            runFolder = AvengersPaths.runFolder(dataFolder: dataFolder, runId: id)
         }
     }
 }
@@ -108,7 +108,7 @@ final class AppModel {
 
     init(demo: Bool = false) {
         isDemo = demo
-        dataFolder = SuitePaths.dataFolder()
+        dataFolder = AvengersPaths.dataFolder()
         // Preferences saved under the app's old bundle ID carry over once.
         if let legacy = UserDefaults(suiteName: AppInfo.legacyBundleID) {
             for key in ["uvPathOverride", "engineDirOverride"] where UserDefaults.standard.object(forKey: key) == nil {
@@ -266,7 +266,7 @@ final class AppModel {
             state.status = "running"
             if let maxCost { state.maxCostUsd = maxCost }
             if let maxTasks { state.maxTasks = maxTasks }
-            state.runFolder = SuitePaths.runFolder(dataFolder: dataFolder, runId: state.id)
+            state.runFolder = AvengersPaths.runFolder(dataFolder: dataFolder, runId: state.id)
             if wasSelected { selection = .run(state.id) }
         case let .plan(_, tasks):
             for t in tasks {
@@ -346,7 +346,7 @@ final class AppModel {
         }
     }
 
-    func rate(_ task: SuiteTask, _ rating: UserRating, in state: RunState) {
+    func rate(_ task: AvengersTask, _ rating: UserRating, in state: RunState) {
         let current = task.rating
         let command = current == rating ? "clear" : rating.command
         let newValue: Int? = command == "clear" ? nil : (rating == .up ? 1 : 0)
@@ -487,7 +487,7 @@ final class AppModel {
         s.report = DemoData.report
         s.samples = DemoData.samples
         s.similar = DemoData.similar
-        s.createdAt = SuiteDates.parse("2026-10-13T16:42:00Z")
+        s.createdAt = AvengersDates.parse("2026-10-13T16:42:00Z")
         s.selectedTaskID = "t_04"
         s.runFolder = URL(fileURLWithPath: "/tmp")
         loadedRuns[s.id] = s

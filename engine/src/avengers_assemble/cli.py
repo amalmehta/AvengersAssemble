@@ -1,4 +1,4 @@
-"""The `suite` command line. The Mac app drives the engine through these commands."""
+"""The `avengers-assemble` command line. The Mac app drives the engine through these commands."""
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .agents import agents_dir, load_agents
 from .bandit import Bandits
-from .config import KIND_IDS, KINDS, home, load_settings
+from .config import KIND_IDS, KINDS, db_path, home, load_settings
 from .orchestrator import Canceled, Orchestrator
 from .providers import make_provider
 from .store import Store
@@ -83,7 +83,7 @@ def cmd_run(args) -> int:
 
 
 def cmd_runs(args) -> int:
-    runs = Store(home() / "suite.db").runs()
+    runs = Store(db_path(home())).runs()
     if args.json:
         out(runs)
     else:
@@ -93,7 +93,7 @@ def cmd_runs(args) -> int:
 
 
 def cmd_show(args) -> int:
-    store = Store(home() / "suite.db")
+    store = Store(db_path(home()))
     run = store.run(args.run_id)
     if not run:
         print(f"No run {args.run_id}", file=sys.stderr)
@@ -116,7 +116,7 @@ def cmd_show(args) -> int:
 
 
 def cmd_rate(args) -> int:
-    store = Store(home() / "suite.db")
+    store = Store(db_path(home()))
     if not store.task(args.task_id):
         print(f"No task {args.task_id}", file=sys.stderr)
         return 1
@@ -142,7 +142,7 @@ def cmd_agents(args) -> int:
 
 def cmd_bandit(args) -> int:
     s = load_settings()
-    b = Bandits(load_agents(home())).fit(Store(home() / "suite.db").scored_tasks(),
+    b = Bandits(load_agents(home())).fit(Store(db_path(home())).scored_tasks(),
                                           s["user_rating_weight"], s["cost_penalty_per_usd"])
     snap = b.snapshot(KIND_IDS)
     if args.json:
@@ -167,7 +167,7 @@ def cmd_kinds(args) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="suite", description="Avengers Assemble: a company of agents routed by bandits.")
+    p = argparse.ArgumentParser(prog="avengers-assemble", description="Avengers Assemble: a company of agents routed by bandits.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run", help="Run a goal with the whole team")

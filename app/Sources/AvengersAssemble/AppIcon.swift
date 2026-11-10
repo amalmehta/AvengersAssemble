@@ -2,20 +2,18 @@ import AppKit
 import AvengersAssembleCore
 import SwiftUI
 
-/// The app icon: a team assembling. A central node (the CEO) is joined to a ring of agents in the app's
-/// three kind families: warm for business, green for engineering, blue for science.
+/// The app icon: a team assembling. A terracotta lead (the CEO) at the centre, joined to a ring of six agents
+/// in one muted blue. Flat, with no glow: colour marks the lead, and only the lead.
 /// Drawn on Apple's macOS icon grid: a 824-point rounded square centred on a 1024-point canvas.
 struct AppIconView: View {
-    /// Small sizes (16 and 32 px) drop the faint ring and draw thicker, so the shape still reads.
+    /// Small sizes (16 and 32 px) draw bigger nodes and thicker spokes, so the shape still reads.
     var simplified = false
 
     private static let canvas: CGFloat = 1024
     private static let tile = CGRect(x: 100, y: 100, width: 824, height: 824)
-    private static let nodes: [(degrees: Double, kind: String)] = [
-        (120, "strategy"), (60, "marketing"),   // business: top
-        (0, "software"), (-60, "robotics"),     // engineering: right
-        (-120, "ai"), (180, "research"),        // science: left
-    ]
+    private static let agentAngles: [Double] = [90, 30, -30, -90, -150, 150]
+    private static let tileTop = Color(hex: 0x1F2840), tileBottom = Color(hex: 0x141A2B)
+    private static let agent = Color(hex: 0x7E9CC4), lead = Color(hex: 0xC8714E)
 
     var body: some View {
         Canvas { ctx, size in
@@ -29,70 +27,40 @@ struct AppIconView: View {
     private func drawTile(_ ctx: inout GraphicsContext) {
         let shape = Path(roundedRect: Self.tile, cornerRadius: 185.4, style: .continuous)
         var shadowed = ctx
-        shadowed.addFilter(.shadow(color: .black.opacity(0.35), radius: 14, x: 0, y: 10))
-        shadowed.fill(shape, with: .color(Color(hex: 0x0B1022)))
-        ctx.fill(shape, with: .linearGradient(
-            Gradient(colors: [Color(hex: 0x2A3A6B), Color(hex: 0x111832), Color(hex: 0x0A0F20)]),
-            startPoint: CGPoint(x: 512, y: 100), endPoint: CGPoint(x: 512, y: 924)))
-        // A soft light behind the team, and a hairline highlight along the top edge.
-        ctx.fill(shape, with: .radialGradient(Gradient(colors: [Color.white.opacity(0.16), .clear]),
-                                              center: CGPoint(x: 512, y: 500), startRadius: 0, endRadius: 400))
-        ctx.stroke(shape, with: .linearGradient(Gradient(colors: [Color.white.opacity(0.22), .clear]),
-                                                startPoint: CGPoint(x: 512, y: 100), endPoint: CGPoint(x: 512, y: 400)),
-                   lineWidth: 3)
+        shadowed.addFilter(.shadow(color: .black.opacity(0.28), radius: 12, x: 0, y: 8))
+        shadowed.fill(shape, with: .color(Self.tileBottom))
+        ctx.fill(shape, with: .linearGradient(Gradient(colors: [Self.tileTop, Self.tileBottom]),
+                                              startPoint: CGPoint(x: 512, y: 100), endPoint: CGPoint(x: 512, y: 924)))
     }
 
     private func drawTeam(_ ctx: inout GraphicsContext) {
         let center = CGPoint(x: 512, y: 512)
-        let ring: CGFloat = simplified ? 268 : 262
-        let nodeRadius: CGFloat = simplified ? 82 : 60
-        let hubRadius: CGFloat = simplified ? 110 : 88
-        let points = Self.nodes.map { node -> (CGPoint, Color) in
-            let a = node.degrees * .pi / 180
-            let p = CGPoint(x: center.x + ring * cos(a), y: center.y - ring * sin(a))
-            return (p, Color(rgb: KindPalette.swatch(for: node.kind).dark))
+        let ring: CGFloat = 255
+        let nodeRadius: CGFloat = simplified ? 74 : 58
+        let hubRadius: CGFloat = simplified ? 100 : 86
+        let points = Self.agentAngles.map { degrees -> CGPoint in
+            let a = degrees * .pi / 180
+            return CGPoint(x: center.x + ring * cos(a), y: center.y - ring * sin(a))
         }
-
-        if !simplified {  // the team's circle
-            ctx.stroke(Path(ellipseIn: CGRect(x: center.x - ring, y: center.y - ring, width: ring * 2, height: ring * 2)),
-                       with: .color(.white.opacity(0.13)), lineWidth: 6)
-        }
-        for (p, color) in points {  // spokes from the hub to each agent
+        for p in points {  // spokes from the lead to each agent
             var line = Path()
             line.move(to: center)
             line.addLine(to: p)
-            ctx.stroke(line, with: .linearGradient(Gradient(colors: [Color.white.opacity(0.9), color]),
-                                                   startPoint: center, endPoint: p),
-                       style: StrokeStyle(lineWidth: simplified ? 30 : 15, lineCap: .round))
+            ctx.stroke(line, with: .color(Self.agent.opacity(0.55)),
+                       style: StrokeStyle(lineWidth: simplified ? 26 : 14, lineCap: .round))
         }
-        for (p, color) in points {
-            drawNode(&ctx, at: p, radius: nodeRadius, color: color, glow: simplified ? 0 : 34)
-        }
-        drawNode(&ctx, at: center, radius: hubRadius, color: Color(hex: 0xF4F7FF), glow: simplified ? 0 : 60,
-                 core: Color.white)
+        for p in points { ctx.fill(Self.disc(p, nodeRadius), with: .color(Self.agent)) }
+        ctx.fill(Self.disc(center, hubRadius), with: .color(Self.lead))
     }
 
-    private func drawNode(_ ctx: inout GraphicsContext, at p: CGPoint, radius r: CGFloat, color: Color, glow: CGFloat,
-                          core: Color? = nil) {
-        let disc = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
-        if glow > 0 {
-            var glowing = ctx
-            glowing.addFilter(.shadow(color: color.opacity(0.85), radius: glow))
-            glowing.fill(disc, with: .color(color))
-        }
-        ctx.fill(disc, with: .radialGradient(Gradient(colors: [core ?? color.opacity(0.75), color]),
-                                             center: CGPoint(x: p.x - r * 0.3, y: p.y - r * 0.35),
-                                             startRadius: 0, endRadius: r * 1.4))
-        ctx.stroke(disc, with: .color(.white.opacity(0.35)), lineWidth: r * 0.06)
+    private static func disc(_ p: CGPoint, _ r: CGFloat) -> Path {
+        Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
     }
 }
 
 private extension Color {
     init(hex: UInt32) {
-        self.init(rgb: RGB(hex: hex))
-    }
-
-    init(rgb: RGB) {
+        let rgb = RGB(hex: hex)
         self.init(.sRGB, red: rgb.r, green: rgb.g, blue: rgb.b, opacity: 1)
     }
 }

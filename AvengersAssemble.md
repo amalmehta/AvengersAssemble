@@ -389,7 +389,7 @@ Decided without asking:
 - Parallel tasks (added on request after v1): up to 3 independent tasks run at once by default ("Tasks at once" in Settings, `--parallel` on the CLI). Routing stays on one thread.
 - Routing on what a task says (added on request): local TF-IDF similarity, applied to both bandits as a kernel over past results (`text_weight` 0.5, "Task wording weight" in Settings). "Why this agent" lists the 3 most similar past tasks, and routing evidence is stored so past runs keep it. Measured in simulation: 50% vs 43% best-agent routing after 60 runs. Tried calibrating the cosine; no measurable gain, so not kept.
 - Uploads made readable (added on request): agents open images and PDFs natively, on demand, via read_file (image and document blocks in the tool result). PDFs over 20 pages come back as text, with page ranges to open natively. HEIC → JPEG, TIFF/BMP → PNG, images downscaled to 1568 px. DOCX/XLSX/PPTX → Markdown. The CEO plans from a digest of every file. Parsing uploads is sandboxed: Python parsers in the strict workspace-only sandbox, image decoding only by Apple's sips (which also needs the per-user temp folder). New dependencies: pypdf, python-docx, openpyxl, python-pptx.
-- App icon (added on request): a central node (the CEO) joined to six agents in the three kind families' colours on a navy tile, deliberately unlike Marvel's logo. Drawn in SwiftUI on Apple's macOS icon grid, with simplified 16 and 32 px sizes; scripts/make-icon.sh renders the .icns.
+- App icon (added on request, redrawn later to feel like a superhero): three caped heroes seen from behind on a navy tile with faint comic rays, the CEO in red in front and two teammates in blue. Our own drawing, deliberately unlike any Marvel or comic logo; 16 and 32 px show the lead alone. Drawn in SwiftUI on Apple's macOS icon grid, with simplified 16 and 32 px sizes; scripts/make-icon.sh renders the .icns.
 - Website (added on request): a static landing page on GitHub Pages (https://amalmehta.github.io/AvengersAssemble/) with a Download button for a universal .app attached to GitHub release v1.0.0. The app isn't notarized (that needs a paid Apple Developer account), so the site explains macOS's one-time Open Anyway step. It doesn't say "open source" because the repo has no license yet, and it states it's not affiliated with Marvel or Disney.
 - Opus/Sonnet requests use refusal fallbacks (`fallbacks: "default"`).
 - Python runs under macOS sandbox-exec: no network, writes only inside the run's workspace, 60 s limit.
@@ -399,6 +399,7 @@ Decided without asking:
 
 CHANGELOG:
 
+- 2026-11-13 — redrew the app icon as a team of caped heroes, so it feels like a superhero
 - 2026-11-02 — renamed the internals too: Swift targets, Python package, `avengers-assemble` command, `AVENGERS_*` env vars and the database file (`suite.db` moves over automatically)
 - 2026-10-27 — first live API run; saving the first API key now switches mock mode off
 - 2026-10-13 — created

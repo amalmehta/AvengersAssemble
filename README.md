@@ -1,4 +1,4 @@
-<img src="docs/images/icon.png" width="96" alt="Avengers Assemble app icon: a terracotta lead joined to six blue agents">
+<img src="docs/images/icon.png" width="96" alt="Avengers Assemble app icon: three caped heroes seen from behind, the lead in red in front">
 
 # Avengers Assemble
 

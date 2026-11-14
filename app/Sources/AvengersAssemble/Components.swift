@@ -1,5 +1,5 @@
 import AppKit
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 extension Color {

@@ -1,5 +1,5 @@
 import Charts
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 struct BanditView: View {

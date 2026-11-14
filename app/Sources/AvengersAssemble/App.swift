@@ -1,5 +1,5 @@
 import AppKit
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 @main
@@ -13,7 +13,7 @@ enum Entry {
             let dir = i + 1 < args.count ? args[i + 1] : "icon"
             IconRenderer.run(outputDirectory: URL(fileURLWithPath: dir, isDirectory: true))
         } else {
-            SuiteOfAgentsApp.main()
+            AvengersAssembleApp.main()
         }
     }
 }
@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-struct SuiteOfAgentsApp: App {
+struct AvengersAssembleApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel()
 

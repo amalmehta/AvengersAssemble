@@ -1,4 +1,4 @@
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 /// A small block-level Markdown renderer: headings, paragraphs, lists, quotes, code fences and rules.

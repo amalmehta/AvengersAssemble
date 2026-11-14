@@ -1,4 +1,4 @@
-import SuiteCore
+import AvengersAssembleCore
 import SwiftUI
 
 struct TeamView: View {

@@ -28,7 +28,7 @@ Get it from the [website](https://amalmehta.github.io/AvengersAssemble/) or the 
 open "build/Avengers Assemble.app"
 ```
 
-The first launch takes about 20 seconds while uv sets up the engine's Python environment in the data folder. During development you can skip the bundle: `cd app && swift run SuiteOfAgents`.
+The first launch takes about 20 seconds while uv sets up the engine's Python environment in the data folder. During development you can skip the bundle: `cd app && swift run AvengersAssemble`.
 
 ## Use it
 
@@ -49,19 +49,19 @@ The first launch takes about 20 seconds while uv sets up the engine's Python env
 The engine works without the app:
 
 ```bash
-cd engine && uv run suite run "Start a drone delivery company for rural pharmacies" --mock
+cd engine && uv run avengers-assemble run "Start a drone delivery company for rural pharmacies" --mock
 ```
 
 | Command | What it does |
 |---|---|
-| `suite run "<goal>" [--input FILE]… [--mock] [--max-cost 2] [--max-tasks 40] [--parallel 3]` | Run a goal (add `--json` for the event stream) |
-| `suite runs` | List runs |
-| `suite show <run_id>` | Tasks, scores and the report for one run |
-| `suite rate <task_id> up\|down\|clear` | Rate a result |
-| `suite agents` | The team, and where their YAML files live |
-| `suite bandit` | Routing posterior means, by kind and agent |
+| `avengers-assemble run "<goal>" [--input FILE]… [--mock] [--max-cost 2] [--max-tasks 40] [--parallel 3]` | Run a goal (add `--json` for the event stream) |
+| `avengers-assemble runs` | List runs |
+| `avengers-assemble show <run_id>` | Tasks, scores and the report for one run |
+| `avengers-assemble rate <task_id> up\|down\|clear` | Rate a result |
+| `avengers-assemble agents` | The team, and where their YAML files live |
+| `avengers-assemble bandit` | Routing posterior means, by kind and agent |
 
-`ANTHROPIC_API_KEY` must be set for real runs. `SUITE_HOME` changes the data folder (default `~/Library/Application Support/Avengers Assemble/`).
+`ANTHROPIC_API_KEY` must be set for real runs. `AVENGERS_HOME` changes the data folder (default `~/Library/Application Support/Avengers Assemble/`).
 
 ## Test
 
@@ -70,15 +70,15 @@ cd engine && uv run pytest
 ```
 
 ```bash
-cd app && SUITE_ENGINE_DIR="$PWD/../engine" swift test
+cd app && AVENGERS_ENGINE_DIR="$PWD/../engine" swift test
 ```
 
-Without `SUITE_ENGINE_DIR`, the three engine integration tests are skipped.
+Without `AVENGERS_ENGINE_DIR`, the three engine integration tests are skipped.
 
 ## Regenerate the README images
 
 ```bash
-"build/Avengers Assemble.app/Contents/MacOS/SuiteOfAgents" --screenshots docs/images
+"build/Avengers Assemble.app/Contents/MacOS/AvengersAssemble" --screenshots docs/images
 ```
 
 ```bash
@@ -109,7 +109,7 @@ gh release create v1.1.0 build/AvengersAssemble.zip --title "Avengers Assemble 1
 
 ## Change the app icon
 
-The icon is drawn in code, in `app/Sources/SuiteOfAgents/AppIcon.swift`. After editing it, regenerate `app/Resources/AppIcon.icns` and `docs/images/icon.png`, then rebuild the app:
+The icon is drawn in code, in `app/Sources/AvengersAssemble/AppIcon.swift`. After editing it, regenerate `app/Resources/AppIcon.icns` and `docs/images/icon.png`, then rebuild the app:
 
 ```bash
 ./scripts/make-icon.sh

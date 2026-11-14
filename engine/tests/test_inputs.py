@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from suite import inputs
-from suite.config import DEFAULT_SETTINGS
-from suite.orchestrator import Orchestrator
-from suite.providers import MockProvider
-from suite.tools import ToolError, Workspace
+from avengers_assemble import inputs
+from avengers_assemble.config import DEFAULT_SETTINGS
+from avengers_assemble.orchestrator import Orchestrator
+from avengers_assemble.providers import MockProvider
+from avengers_assemble.tools import ToolError, Workspace
 
 HAS_SIPS = Path("/usr/bin/sips").exists()
 
@@ -201,7 +201,7 @@ def test_document_sandbox_allows_only_the_workspace(tmp_path):
 def test_image_sandbox_blocks_home_and_network(tmp_path):
     root = tmp_path / "workspace"
     root.mkdir()
-    target = Path.home() / f".suite-sandbox-test-{os.getpid()}"
+    target = Path.home() / f".avengers-assemble-sandbox-test-{os.getpid()}"
     try:
         out = _attempt(inputs._sandbox_profile(root, image=True), target)
         assert "write-blocked" in out and "net-blocked" in out and not target.exists()
@@ -210,11 +210,11 @@ def test_image_sandbox_blocks_home_and_network(tmp_path):
 
 
 def test_run_prepares_inputs_and_agents_see_native_pdf(tmp_path, monkeypatch):
-    monkeypatch.setenv("SUITE_HOME", str(tmp_path))
+    monkeypatch.setenv("AVENGERS_HOME", str(tmp_path))
     brief = tmp_path / "brief.pdf"
     make_pdf(brief, ["Laundry robot market brief"])
     events = []
-    orch = Orchestrator(MockProvider(seed=1), events.append, suite_home=tmp_path, rng=random.Random(1),
+    orch = Orchestrator(MockProvider(seed=1), events.append, avengers_home=tmp_path, rng=random.Random(1),
                         settings={**DEFAULT_SETTINGS, "max_parallel_tasks": 1})
     orch.run("Launch a company selling a home robot that folds laundry", [brief])
     assert [e["type"] for e in events][:2] == ["run_started", "inputs"]

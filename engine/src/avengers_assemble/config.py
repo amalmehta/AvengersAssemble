@@ -58,10 +58,12 @@ JUDGE_VARIANT = "sonnet-medium"
 
 APP_NAME = "Avengers Assemble"
 LEGACY_APP_NAME = "Suite of Agents"  # the data folder's name before the rename
+DB_NAME = "avengers_assemble.db"
+LEGACY_DB_NAME = "suite.db"  # the database's name before the rename
 
 
 def home() -> Path:
-    env = os.environ.get("SUITE_HOME")
+    env = os.environ.get("AVENGERS_HOME")
     path = Path(env) if env else migrate_legacy_home(Path.home() / "Library" / "Application Support")
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -75,6 +77,21 @@ def migrate_legacy_home(support: Path) -> Path:
         try:
             legacy.rename(current)
             shutil.rmtree(current / "venv", ignore_errors=True)
+        except OSError:
+            return legacy if not current.exists() else current
+    return current
+
+
+def db_path(data: Path) -> Path:
+    """The run database in a data folder, renamed from its old name the first time.
+    SQLite's side files move first, so the database is never left without them. If both exist, nothing moves."""
+    current, legacy = data / DB_NAME, data / LEGACY_DB_NAME
+    if not current.exists() and legacy.exists():
+        try:
+            for suffix in ("-wal", "-shm", "-journal", ""):
+                side = data / (LEGACY_DB_NAME + suffix)
+                if side.exists():
+                    side.rename(data / (DB_NAME + suffix))
         except OSError:
             return legacy if not current.exists() else current
     return current
